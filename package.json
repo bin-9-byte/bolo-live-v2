@@ -1,0 +1,25 @@
+{
+  "name": "digital-human-studio-prototype",
+  "private": true,
+  "version": "0.0.0-prototype",
+  "type": "module",
+  "scripts": {
+    "prototype": "vite",
+    "build": "tsc -b && vite build"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "latest",
+    "lucide-react": "latest",
+    "motion": "latest",
+    "motion-panels": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "vite": "latest"
+  },
+  "devDependencies": {
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "less": "^4.9.1",
+    "typescript": "latest"
+  }
+}

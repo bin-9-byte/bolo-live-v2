@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" role="img" aria-label="车型示例占位图">
+  <rect width="320" height="200" rx="20" fill="#f2f2f2"/>
+  <path d="M55 111h210l-16-34a17 17 0 0 0-16-10H87a17 17 0 0 0-16 10l-16 34Z" fill="#d9d9d9" stroke="#999" stroke-width="3"/>
+  <path d="M83 77h154l13 29H70l13-29Z" fill="#e9edf0" stroke="#999" stroke-width="2"/>
+  <path d="M55 111h210v34a9 9 0 0 1-9 9H64a9 9 0 0 1-9-9v-34Z" fill="#c7c7c7" stroke="#888" stroke-width="3"/>
+  <rect x="72" y="121" width="42" height="13" rx="6" fill="#fafafa"/>
+  <rect x="206" y="121" width="42" height="13" rx="6" fill="#fafafa"/>
+  <rect x="128" y="136" width="64" height="10" rx="5" fill="#aaa"/>
+  <circle cx="82" cy="157" r="10" fill="#555"/>
+  <circle cx="238" cy="157" r="10" fill="#555"/>
+  <text x="160" y="188" text-anchor="middle" fill="#777" font-family="sans-serif" font-size="12">车型示例</text>
+</svg>
