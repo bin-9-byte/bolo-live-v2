@@ -26,4 +26,4 @@ npm run build
 - Install Command: npm ci
 - 无需环境变量
 
-当前三栏演示入口：`/?variant=A`。
+当前工作室入口：`/`（首页）或 `/studio.html`，两者均展示同一版 Studio。
