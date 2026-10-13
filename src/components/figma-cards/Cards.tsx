@@ -1,5 +1,5 @@
 import { useId, useLayoutEffect, useRef, useState } from 'react'
-import type { ChangeEvent } from 'react'
+import type { ChangeEvent, ReactNode } from 'react'
 import { motion, useReducedMotion } from 'motion/react'
 import type { HTMLMotionProps } from 'motion/react'
 import { assets } from './assets'
@@ -28,13 +28,15 @@ function Icon({ name, className = '' }: { name: keyof typeof assets; className?:
   return <span className={`fc-icon fc-icon--${name} ${className}`} aria-hidden="true"><img src={assets[name]} alt="" draggable={false}/></span>
 }
 
-function Header({ title, badge, expanded = false, actions = false, actionsDisabled = false, onAction, onToggle, toggleLabel }: {
+function Header({ title, badge, expanded = false, actions = false, actionsDisabled = false, onAction, onToggle, toggleLabel, onHistory }: {
+  onHistory?: () => void;
   title: string; badge?: string; expanded?: boolean; actions?: boolean; actionsDisabled?: boolean; onAction?: (action: AssetAction | 'edit') => void; onToggle?: () => void; toggleLabel?: string
 }) {
   return <header className="fc-header">
     <button className="fc-collapse" aria-label={toggleLabel ?? `切换${title}`} onClick={onToggle}><Icon name="panel"/></button>
     <div className="fc-heading"><h2>{title}</h2>{badge && <span className="fc-confirmed-tag">{badge}</span>}</div>
     {actions && <div className="fc-actions">
+      {onHistory && <button className="fc-round" aria-label="脚本历史" title="脚本历史" onClick={onHistory}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 11a9 9 0 1 1 2.5 7M3 4v7h7m2-4v5l3 2"/></svg></button>}
       <button className="fc-round" aria-label={`上传${title}`} disabled={actionsDisabled} onClick={() => onAction?.('upload')}><Icon name="upload"/></button>
       <button className="fc-round" aria-label={`AI生成${title}`} disabled={actionsDisabled} onClick={() => onAction?.('generate')}><Icon name="magic"/></button>
       <button className="fc-round fc-size-toggle" aria-label={`${expanded ? '收起' : '展开'}${title}`} onClick={onToggle}><Icon name={expanded ? 'collapse' : 'expand'}/></button>
@@ -134,7 +136,8 @@ function RichTextExample() {
     </blockquote><p>{paragraph}</p></div>)}
   </div>
 }
-export function ScriptCard({ state = 'Default', phase, expanded: expandedProp, confirmed = false, onStateChange, onExpandedChange, value, onChange, onUpload, onGenerate, onEdit, onConfirm, onCancel, onRetry, fileName, error }: {
+export function ScriptCard({ state = 'Default', phase, expanded: expandedProp, confirmed = false, onStateChange, onExpandedChange, value, onChange, onUpload, onGenerate, onEdit, onConfirm, onCancel, onRetry, fileName, error, onHistory, historyPanel }: {
+  onHistory?: () => void; historyPanel?: ReactNode;
   state?: ScriptState; phase?: ScriptPhase; expanded?: boolean; confirmed?: boolean; onStateChange?: (state: ScriptState) => void; onExpandedChange?: (expanded: boolean) => void; value?: string; onChange?: (text: string) => void; onUpload?: () => void; onGenerate?: () => void; onEdit?: () => void; onConfirm?: () => void; onCancel?: () => void; onRetry?: () => void; fileName?: string; error?: string
 }) {
   const [localText, setLocalText] = useState('')
@@ -145,19 +148,19 @@ export function ScriptCard({ state = 'Default', phase, expanded: expandedProp, c
   const expanded = expandedProp ?? legacyExpanded
   const currentPhase = phase ?? (state === 'Empty' || state === 'Variant2' ? 'empty' : state === 'Generating' || state === 'Variant3' ? 'generating' : 'ready')
   const busy = currentPhase === 'uploading' || currentPhase === 'generating'
-  const editable = currentPhase === 'empty' || currentPhase === 'editing'
+  const editable = currentPhase === 'empty' || currentPhase === 'editing' || (phase !== undefined && currentPhase === 'ready')
   const toggle = () => {
     if (onExpandedChange) onExpandedChange(!expanded)
     else onStateChange?.(editable ? (expanded ? 'Empty' : 'Variant2') : currentPhase === 'generating' ? (expanded ? 'Generating' : 'Variant3') : (expanded ? 'Default' : 'Variant4'))
   }
   const confirm = () => { editor.current?.blur(); onConfirm?.() }
   return <CardSurface className={`fc-card fc-script fc-script--${state} fc-script--phase-${currentPhase} ${expanded ? 'fc-script--expanded' : ''}`} data-component="script" data-state={phase ?? state} data-expanded={expanded} data-confirmed={confirmed}>
-    <Header title="脚本内容" badge={confirmed ? '已确认' : undefined} expanded={expanded} actions actionsDisabled={busy} onToggle={toggle} onAction={action => { if (action === 'upload') onUpload?.(); else if (action === 'generate') onGenerate?.() }}/>
-    {editable ? <div className="fc-editor-body"><div className="fc-editor"><textarea ref={editor} id={id} aria-label="脚本内容" placeholder="输入脚本内容" autoFocus={currentPhase === 'editing' && phase !== undefined} maxLength={SCRIPT_MAX_LENGTH} value={text} onChange={(e: ChangeEvent<HTMLTextAreaElement>) => { setLocalText(e.target.value); onChange?.(e.target.value) }}/><div className={`fc-editor-footer ${onConfirm ? 'fc-editor-footer--actions' : ''}`}><span className="fc-counter">{text.length} / {SCRIPT_MAX_LENGTH}</span>{onConfirm && <div className="fc-script-controls"><button className="fc-script-primary" aria-pressed={confirmed} disabled={!text.trim()} onClick={confirm}>确认脚本内容</button></div>}</div></div></div>
+    <Header title="脚本内容" badge={confirmed ? '已确认' : undefined} expanded={expanded} actions actionsDisabled={busy} onHistory={onHistory} onToggle={toggle} onAction={action => { if (action === 'upload') onUpload?.(); else if (action === 'generate') onGenerate?.() }}/>
+    {historyPanel ?? (editable ? <div className="fc-editor-body"><div className="fc-editor"><textarea ref={editor} id={id} aria-label="脚本内容" placeholder="输入脚本内容" autoFocus={currentPhase === 'editing' && phase !== undefined} maxLength={SCRIPT_MAX_LENGTH} value={text} onChange={(e: ChangeEvent<HTMLTextAreaElement>) => { setLocalText(e.target.value); onChange?.(e.target.value) }}/><div className={`fc-editor-footer ${onConfirm ? 'fc-editor-footer--actions' : ''}`}><span className="fc-counter">{text.length} / {SCRIPT_MAX_LENGTH}</span>{onConfirm && <div className="fc-script-controls"><button className="fc-script-primary" aria-pressed={confirmed} disabled={!text.trim()} onClick={confirm}>确认脚本内容</button></div>}</div></div></div>
     : currentPhase === 'generating' ? <div className="fc-analysis" role="status"><Icon name="loading"/><div className="fc-analysis-label">信息分析中</div><div className="fc-analysis-caption" aria-label="正在整理脚本内容，预估等待耗时1至5分钟"><span/><span/></div></div>
     : currentPhase === 'uploading' ? <div className="fc-script-feedback" role="status"><span className="fc-slot-spinner"/><strong>正在读取脚本</strong><span title={fileName}>{fileName}</span></div>
     : currentPhase === 'error' ? <div className="fc-script-feedback" role="alert"><strong>脚本处理未完成</strong><span>{error}</span><div className="fc-script-controls"><button onClick={onCancel}>返回脚本</button><button className="fc-script-primary" onClick={onRetry}>重试</button></div></div>
-    : <div className="fc-rich-body"><div className="fc-rich-panel">{(onEdit || onConfirm) && <div className="fc-script-ready-actions">{onEdit && <button className="fc-script-edit" onClick={onEdit}>编辑</button>}{onConfirm && <button className="fc-script-confirm" aria-pressed={confirmed} disabled={!text.trim()} onClick={confirm}>确认脚本内容</button>}</div>}<div className="fc-rich-scroll" tabIndex={0} aria-label="已完成的脚本内容">{phase ? <div className="fc-user-script">{text}</div> : text ? <div className="fc-user-script">{text}</div> : <RichTextExample/>}</div></div></div>}
+    : <div className="fc-rich-body"><div className="fc-rich-panel">{(onEdit || onConfirm) && <div className="fc-script-ready-actions">{onEdit && <button className="fc-script-edit" onClick={onEdit}>编辑</button>}{onConfirm && <button className="fc-script-confirm" aria-pressed={confirmed} disabled={!text.trim()} onClick={confirm}>确认脚本内容</button>}</div>}<div className="fc-rich-scroll" tabIndex={0} aria-label="已完成的脚本内容">{phase ? <div className="fc-user-script">{text}</div> : text ? <div className="fc-user-script">{text}</div> : <RichTextExample/>}</div></div></div>)}
   </CardSurface>
 }
 

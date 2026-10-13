@@ -4,6 +4,7 @@ import { BackgroundCard, CharacterVoiceCard, ScriptCard, StickerCard, SCRIPT_MAX
 import type { AssetAction, BackgroundState, ScriptPhase, VoiceState } from './components/figma-cards'
 import './studio.less'
 import { PreviewAssetToolbar } from './components/PreviewAssetToolbar'
+import { ScriptHistory, useScriptVersions } from './components/ScriptHistory'
 
 const asset = (file: string) => `/figma-components/${file}`
 function Glyph({ file, className = '' }: { file: string; className?: string }) {
@@ -88,6 +89,9 @@ export function Studio() {
   const studioEditor = useRef<HTMLElement>(null)
   const [dialog, setDialog] = useState<DialogKind>(null)
   const [notice, setNotice] = useState('')
+  const { versions, record: recordScript } = useScriptVersions(setNotice)
+  const [scriptHistoryOpen, setScriptHistoryOpen] = useState(false)
+  const [historyText, setHistoryText] = useState<string>()
   const [libraryTarget, setLibraryTarget] = useState<MediaKind>('background')
   const fileInput = useRef<HTMLInputElement>(null)
   const fileKind = useRef<MediaKind>('background')
@@ -101,13 +105,37 @@ export function Studio() {
   const undo = () => { if (!past.length) return; setFuture(f => [draft, ...f]); const previous = past[past.length - 1]; setDraft(previous); syncScript(previous.script); setPast(p => p.slice(0, -1)); setSaved(false) }
   const redo = () => { if (!future.length) return; setPast(p => [...p, draft]); const next = future[0]; setDraft(next); syncScript(next.script); setFuture(f => f.slice(1)); setSaved(false) }
   const save = () => { try { localStorage.setItem('pineapple-studio-draft', JSON.stringify(draft)); setSaved(true); setNotice('已保存到此浏览器'); } catch { setNotice('浏览器存储不可用，请导出配置保存'); } }
-  const startScriptEdit = () => { scriptOperation.current++; scriptEditOrigin.current = draft.script; scriptEditHistoryAdded.current = false; setScriptEditText(draft.script); setScriptPhase('editing'); setTab('edit') }
+  const showScriptEditor = () => {
+    setScriptHistoryOpen(false)
+    setScriptExpanded(true)
+    setTab('edit')
+    requestAnimationFrame(() => studioEditor.current?.scrollTo({ top: 0 }))
+  }
+  const startScriptEdit = () => { scriptOperation.current++; scriptEditOrigin.current = draft.script; scriptEditHistoryAdded.current = false; setScriptEditText(draft.script); setScriptPhase('editing'); showScriptEditor() }
   const updateScriptText = (text: string) => {
     if (scriptPhase === 'empty') { scriptEditOrigin.current = draft.script; scriptEditHistoryAdded.current = false; setScriptPhase('editing') }
     if (!scriptEditHistoryAdded.current) { setPast(p => [...p.slice(-29), draft]); setFuture([]); scriptEditHistoryAdded.current = true }
     setDraft(current => ({ ...current, script: text })); setScriptEditText(text); setScriptConfirmed(false); setSaved(false)
   }
-  const confirmScript = () => { if (!draft.script.trim()) return; scriptEditHistoryAdded.current = false; setScriptConfirmed(true); if (scriptExpanded) { studioEditor.current?.scrollTo({ top: 0 }); setScriptExpanded(false) } }
+  const confirmScript = () => { if (!draft.script.trim()) return; recordScript(draft.script, '手动编辑', true); scriptEditHistoryAdded.current = false; setScriptConfirmed(true); if (scriptExpanded) { studioEditor.current?.scrollTo({ top: 0 }); setScriptExpanded(false) } }
+  const openScriptHistory = (text?: string) => {
+    setHistoryText(text)
+    setScriptHistoryOpen(true)
+    setScriptExpanded(true)
+    setTab('edit')
+    requestAnimationFrame(() => studioEditor.current?.scrollTo({ top: 0 }))
+  }
+  const restoreScript = (text: string) => {
+    recordScript(draft.script, '手动编辑', true)
+    recordScript(text, '历史恢复', true)
+    changed({ ...draft, script: text })
+    syncScript(text)
+    setScriptPhase('editing')
+    scriptEditOrigin.current = text
+    scriptEditHistoryAdded.current = false
+    showScriptEditor()
+    setNotice('已恢复脚本版本，请确认脚本内容')
+  }
   const cancelScriptEdit = () => {
     scriptOperation.current++
     const previous = scriptPhase === 'error' ? scriptReturnState.current : { phase: scriptEditOrigin.current.trim() ? 'ready' : 'empty' as ScriptPhase, text: scriptEditOrigin.current }
@@ -144,6 +172,7 @@ export function Studio() {
         ? `【${draft.title || '数字人视频'}】\n今天我们聊聊${topic}。用一个贴近生活的例子，带你快速了解它的核心价值。\n接下来，我们会依次介绍应用场景、主要亮点，以及如何开始使用。\n如果你也有类似需求，欢迎留言告诉我们。`
         : demoImages[target]
       setGenerationTask({ id: operation, target, status: 'ready', candidate, prompt })
+      if (target === 'script') recordScript(candidate, 'AI 生成')
       setMessages(current => current.map(item => item.kind === 'generation' && item.id === operation ? { ...item, status: 'ready', candidate } : item))
     }, 1200)
   }
@@ -157,9 +186,11 @@ export function Studio() {
     if (generationTask?.status !== 'ready') return
     const { target, candidate } = generationTask
     if (target === 'script') {
+      recordScript(draft.script, '手动编辑', true)
+      recordScript(candidate, 'AI 生成', true)
       changed({ ...draft, script: candidate })
       setScriptEditText(candidate); setScriptPhase('editing'); setScriptConfirmed(false)
-      setScriptExpanded(false)
+      showScriptEditor()
     } else {
       setMedia(current => ({ ...current, [target]: candidate }))
       if (target === 'background') setBackgroundState('已上传')
@@ -200,7 +231,9 @@ export function Studio() {
         if (scriptOperation.current === operation) {
           if (text.length > SCRIPT_MAX_LENGTH) throw new Error(`文件共有 ${text.length} 字，超过 ${SCRIPT_MAX_LENGTH} 字限制。请缩短后重新上传。`)
           if (!text.trim()) throw new Error('文件没有可用的脚本内容，请选择其他文件。')
-          changed({ ...draft, script: text }); setScriptEditText(text); setScriptConfirmed(false); setScriptPhase('ready')
+          recordScript(draft.script, '手动编辑', true); recordScript(text, '文件上传', true)
+          changed({ ...draft, script: text }); setScriptEditText(text); setScriptConfirmed(false); setScriptPhase('editing')
+          showScriptEditor()
         }
       } catch (error) { if (scriptOperation.current === operation) { setScriptError(error instanceof Error ? error.message : '文件读取失败，请重新上传。'); setScriptPhase('error') } }
     }
@@ -250,7 +283,7 @@ export function Studio() {
     const operation = ++submissionOperation.current
     setInformationSubmitted(true)
     setTab('chat')
-    setMessages(current => [...current, { kind: 'user', id: ++chatMessageId.current, text: '已确认信息' }, { kind: 'submission', id, answers, phase: 'thinking', expanded: false }])
+    setMessages(current => [...current, { kind: 'submission', id, answers, phase: 'thinking', expanded: false }])
     window.setTimeout(() => { if (submissionOperation.current === operation) setMessages(current => current.map(item => item.kind === 'submission' && item.id === id ? { ...item, phase: 'reply' as const } : item)) }, 800)
     window.setTimeout(() => { if (submissionOperation.current === operation) setMessages(current => current.map(item => item.kind === 'submission' && item.id === id ? { ...item, phase: 'generating' as const } : item)) }, 1900)
   }
@@ -303,17 +336,21 @@ export function Studio() {
           <div className="studio-user-bubble">帮我生成一个小红书图文工作流，可以一键发布小红书的那种</div>
           <div className="studio-assistant"><button className="studio-thinking" aria-expanded={thinking} onClick={() => setThinking(!thinking)}>已完成思考<Glyph file="0a566.svg" className={thinking ? '' : 'studio-turn'}/></button>{thinking && <p>先确认视频类型、用途和风格，再补充人物、音色、场景与脚本。</p>}
             <p>好的，以收集到基础行业信心，补充一下信息，我将为您产出更完善的法律个债行业的直播脚本。</p>
-            <div className={`studio-questionnaire ${informationSubmitted ? 'studio-questionnaire--submitted' : ''}`}>{questions.map((q, i) => <fieldset key={q}><legend>{q}</legend><div className="studio-choices">{(informationSubmitted ? [draft.custom[i].trim() || draft.answers[i]] : choices[i]).map(c => <button key={c} disabled={informationSubmitted} aria-pressed={informationSubmitted || draft.answers[i] === c && !draft.custom[i]} onClick={() => changed({ ...draft, answers: draft.answers.map((v, j) => j === i ? c : v), custom: draft.custom.map((v, j) => j === i ? '' : v) })}>{c}</button>)}</div>{!informationSubmitted && <label className="studio-other"><Glyph file="f22e1.svg"/><input aria-label={`问题${i + 1}的其他想法`} placeholder="我有其他想法" value={draft.custom[i]} onChange={e => changed({ ...draft, custom: draft.custom.map((v, j) => j === i ? e.target.value : v) })}/></label>}</fieldset>)}</div>
+            {informationSubmitted ? <section className="studio-confirmed-summary" aria-label="已确认的需求信息">
+              <header><strong>需求信息</strong><span><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m3 8 3 3 7-7"/></svg>已确认</span></header>
+              <dl>{['视频类型', '主要用途', '呈现风格'].map((label, i) => <div key={label}><dt>{label}</dt><dd>{messages.find(m => m.kind === 'submission')?.answers[i]}</dd></div>)}</dl>
+            </section> : <div className="studio-questionnaire">{questions.map((q, i) => <fieldset key={q}><legend>{q}</legend><div className="studio-choices">{choices[i].map(c => <button key={c} aria-pressed={draft.answers[i] === c && !draft.custom[i]} onClick={() => changed({ ...draft, answers: draft.answers.map((v, j) => j === i ? c : v), custom: draft.custom.map((v, j) => j === i ? '' : v) })}>{c}</button>)}</div><label className="studio-other"><Glyph file="f22e1.svg"/><input aria-label={`问题${i + 1}的其他想法`} placeholder="我有其他想法" value={draft.custom[i]} onChange={e => changed({ ...draft, custom: draft.custom.map((v, j) => j === i ? e.target.value : v) })}/></label></fieldset>)}</div>}
             {!informationSubmitted && <button className="studio-submit" onClick={submit}>提交信息</button>}
           </div>
           {messages.map(m => m.kind === 'user' ? <div className="studio-user-bubble" key={`user-${m.id}`}>{m.text}</div> : m.kind === 'submission' ? <article className="studio-submission-flow" key={`submission-${m.id}`} aria-label="信息确认后的生成进度">
             {m.phase === 'thinking' ? <div className="studio-submission-thinking" role="status">正在思考<span className="studio-submission-dots" aria-hidden="true">···</span></div> : <button className="studio-thinking" aria-expanded={m.expanded} onClick={() => setMessages(current => current.map(item => item.kind === 'submission' && item.id === m.id ? { ...item, expanded: !item.expanded } : item))}>已完成思考<Glyph file="0a566.svg" className={m.expanded ? '' : 'studio-turn'}/></button>}
             {m.expanded && <p className="studio-submission-thought">已根据视频类型、用途和风格整理脚本方向。</p>}
-            {m.phase !== 'thinking' && <div className="studio-submission-reply"><p>我已收集完基础信息：</p><ul><li>视频类型：{m.answers[0]}</li><li>主要用途：{m.answers[1]}</li><li>呈现风格：{m.answers[2]}</li></ul><p>现在开始生成脚本内容</p></div>}
+            {m.phase !== 'thinking' && <div className="studio-submission-reply"><p>已收到需求，开始生成脚本。</p></div>}
             {m.phase === 'generating' && <div className="studio-submission-progress" role="status"><span>脚本大纲生成中</span><span className="studio-submission-spinner" aria-hidden="true"/></div>}
           </article> : <article className="studio-generated-message" key={`generation-${m.id}`} aria-label={`${generationNames[m.target]}生成内容`}>
             <div className="studio-generated-meta"><strong>{generationNames[m.target]}</strong><span>{m.status === 'generating' ? '生成中' : m.status === 'ready' ? '待确认' : m.status === 'applied' ? '已回填' : '未使用'}</span></div>
             {m.status === 'generating' ? <p className="studio-generated-loading">正在准备本地示例结果…</p> : !m.candidate ? <p className="studio-generated-loading">已取消生成</p> : <><span className="studio-generated-demo">本地示例</span>{m.target === 'script' ? <p className="studio-generated-text">{m.candidate}</p> : <img className="studio-generated-image" src={m.candidate} alt={`${generationNames[m.target]}示例预览`}/>}</>}
+            {m.target === 'script' && m.candidate && m.status !== 'generating' && <button className="studio-script-history-link" onClick={() => openScriptHistory(m.candidate)}>查看脚本历史</button>}
           </article>)}
         </div></div>
         {generationTask && <section className="studio-generation" aria-label={`${generationNames[generationTask.target]}生成任务`} aria-live="polite">
@@ -325,7 +362,7 @@ export function Studio() {
         <div className={`studio-composer ${generationTask?.status === 'draft' ? 'studio-composer--prompt' : ''}`}><textarea ref={composer} aria-label="对话需求" placeholder={generationTask ? `补充${generationNames[generationTask.target]}的生成要求（可选）` : '输入你想要的需求，如：帮我生成一个数字人口播工作流'} value={message} onChange={e => setMessage(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && generationTask?.status !== 'draft') { e.preventDefault(); send() } }}/>{attachment && <button className="studio-attachment" onClick={() => setAttachment('')}>{attachment} ×</button>}<div className="studio-compose-actions"><div><button aria-label="添加附件" onClick={() => upload('attachment')}><Glyph file="dcc27.svg"/></button><button aria-label="编辑脚本" onClick={startScriptEdit}><Glyph file="05e6b.svg"/></button><button className="studio-mode" onClick={() => setNotice('当前为数字人口播工作流')}><Glyph file="c6d65.svg"/>数字人<Glyph file="b5034.svg"/></button></div><button className={`studio-send ${message.trim() || attachment ? 'studio-send--ready' : ''}`} aria-label="发送需求" disabled={!message.trim() && !attachment} onClick={send}><svg viewBox="0 0 32 32" width="32" height="32" aria-hidden="true"><path d="M16 23V9m0 0-6 6m6-6 6 6" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg></button></div></div>
       </aside>
       <section ref={studioEditor} className={`studio-editor ${expanded ? 'studio-editor--expanded' : ''}`} aria-label="创作编辑区"><div className="studio-editor-flow">
-        <ScriptCard phase={scriptPhase} expanded={scriptExpanded} confirmed={scriptConfirmed} onExpandedChange={setScriptExpanded} value={draft.script} onChange={updateScriptText} onEdit={startScriptEdit} onConfirm={confirmScript} onCancel={cancelScriptEdit} onUpload={() => upload('script')} onGenerate={() => prepareGeneration('script')} onRetry={() => upload('script')} fileName={scriptFileName} error={scriptError}/>
+        <ScriptCard onHistory={() => scriptHistoryOpen ? setScriptHistoryOpen(false) : openScriptHistory()} historyPanel={scriptHistoryOpen ? <ScriptHistory key={historyText ?? 'latest'} initialText={historyText} versions={versions} currentText={draft.script} onUse={restoreScript} onClose={() => setScriptHistoryOpen(false)}/> : undefined} phase={scriptPhase} expanded={scriptExpanded} confirmed={scriptConfirmed} onExpandedChange={setScriptExpanded} value={draft.script} onChange={updateScriptText} onEdit={startScriptEdit} onConfirm={confirmScript} onCancel={cancelScriptEdit} onUpload={() => upload('script')} onGenerate={() => prepareGeneration('script')} onRetry={() => upload('script')} fileName={scriptFileName} error={scriptError}/>
         <div className="studio-supporting-modules">
         <div className="studio-assets-row"><CharacterVoiceCard imageUrl={media.character} loadingImage={!!imageLoading.character} onRemoveImage={() => removeImage('character')} audioUrl={media.voice} voiceState={voiceState} onVoiceStateChange={setVoiceState} onAction={intent => action('character', intent)} onVoiceUpload={() => upload('voice')} onVoiceLibrary={() => { setLibraryTarget('voice'); setDialog('library') }}/><BackgroundCard state={backgroundState} onStateChange={setBackgroundState} imageUrl={media.background} loadingBackground={!!imageLoading.background} onRemoveBackground={() => removeImage('background')} vehicleImageUrl={media.vehicle} loadingVehicle={!!imageLoading.vehicle} onRemoveVehicle={() => removeImage('vehicle')} onAction={intent => action('background', intent)} onVehicleAction={intent => action('vehicle', intent)}/></div>
         <StickerCard onUpload={() => upload('sticker')} loading={!!imageLoading.sticker} compact={expanded} selectedSticker={stickerImage} onStickerChange={image => { stickerOperation.current++; setImageLoading(current => ({ ...current, sticker: false })); setStickerImage(image); setSaved(false) }} previewReady={previewCurrent} onMore={() => { setLibraryTarget('attachment'); setDialog('library') }}/>
