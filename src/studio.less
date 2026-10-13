@@ -163,7 +163,7 @@ body { background: #f2f2f2; }
   .fc-character-body > .fc-slot, .fc-character-body > .fc-voice { width: 100%; }
   .fc-background { width: 100%; height: 330px; min-width: 0; }
   .fc-background-body { display: grid; grid-template-columns: minmax(0, 1.618fr) minmax(0, 1fr); }
-  .fc-background-body > .fc-slot { width: 100%; min-width: 0; }
+  .fc-background-body > .fc-slot { width: 100%; min-width: 0; container: background-asset-slot / size; }
   .fc-card--collapsed { height: 57px; }
 }
 .studio-supporting-modules { display: contents; }
@@ -304,6 +304,13 @@ body { background: #f2f2f2; }
   .studio-assets-row .fc-background-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1.618fr) minmax(0, 1fr); }
   .studio-assets-row .fc-card--collapsed { height: 57px; }
 }
+// Portrait slots keep the vertical menu. Landscape slots switch only when 3 actions
+// (3 * 36px + 2 * 8px) cannot keep 12px of space above and below.
+@container background-asset-slot (min-aspect-ratio: 1 / 1) and (max-height: 147px) {
+  .studio-assets-row .fc-background-body .fc-slot-menu {
+    flex-direction: row;
+  }
+}
 @media (prefers-reduced-motion: reduce) { .studio * { scroll-behavior: auto; transition-duration: 0ms !important; animation-duration: 0ms !important; } }
 
 // Keep all supporting modules visible while the script uses the remaining height.
@@ -327,6 +334,13 @@ body { background: #f2f2f2; }
   .studio-supporting-modules .fc-character .fc-material-label, .studio-supporting-modules .fc-background .fc-material-label { font-size: 9px; padding: 1px 4px; }
   .studio-supporting-modules .fc-slot-menu { gap: 4px; padding: 0 2px; button { padding: 4px; height: 28px; gap: 2px; font-size: 9px; } }
   .studio-supporting-modules .fc-card--collapsed { height: 57px; min-height: 57px; }
+}
+
+// Expanded script mode uses smaller actions: 3 * 28px + 2 * 4px + 2 * 12px = 116px.
+@container background-asset-slot (min-height: 116px) {
+  .studio-editor--expanded .studio-supporting-modules .fc-background-body .fc-slot-menu {
+    flex-direction: column;
+  }
 }
 
 .studio-editor .fc-card { transition: height 220ms cubic-bezier(.22,1,.36,1), border-radius 220ms ease; }
