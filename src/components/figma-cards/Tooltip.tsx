@@ -4,7 +4,7 @@ import './tooltip.less'
 
 export type TooltipGuide = { title: string; text: string; cover: string }
 
-export function TooltipHelp({ text, label, guide }: { text: string; label: string; guide?: TooltipGuide }) {
+export function TooltipHelp({ text, label, guide, withinLayer = false }: { text: string; label: string; guide?: TooltipGuide; withinLayer?: boolean }) {
   const variant = guide ? 'card' : 'bubble'
   const id = useId()
   const trigger = useRef<HTMLButtonElement>(null)
@@ -15,20 +15,23 @@ export function TooltipHelp({ text, label, guide }: { text: string; label: strin
 
   useLayoutEffect(() => {
     if (!rendered) return
+    if (withinLayer && bubble.current && !bubble.current.matches(':popover-open')) {
+      try { bubble.current.showPopover() } catch { /* The tooltip may already be closing. */ }
+    }
     const place = () => {
       const rect = trigger.current?.getBoundingClientRect()
       if (!rect) return
       const bubbleRect = bubble.current?.getBoundingClientRect()
       const halfWidth = (bubbleRect?.width ?? 0) / 2
       const cardHeight = bubbleRect?.height ?? 274
-      const above = variant === 'card' && rect.top >= cardHeight + 8
-      setPosition({ left: Math.min(Math.max(rect.left + rect.width / 2, halfWidth + 16), window.innerWidth - halfWidth - 16), top: variant === 'card' && !above ? rect.bottom : rect.top, above })
+      const above = (withinLayer || variant === 'card') && rect.top >= cardHeight + 8
+      setPosition({ left: Math.min(Math.max(rect.left + rect.width / 2, halfWidth + 16), window.innerWidth - halfWidth - 16), top: !above && (withinLayer || variant === 'card') ? rect.bottom : rect.top, above })
     }
     place()
     window.addEventListener('scroll', place, true)
     window.addEventListener('resize', place)
     return () => { window.removeEventListener('scroll', place, true); window.removeEventListener('resize', place) }
-  }, [rendered, variant])
+  }, [rendered, variant, withinLayer])
 
   useEffect(() => {
     if (open || !rendered) return
@@ -41,11 +44,19 @@ export function TooltipHelp({ text, label, guide }: { text: string; label: strin
 
   return <>
     <button ref={trigger} type="button" className={`fc-tooltip-help fc-tooltip-help--${variant}`} aria-label={label} aria-describedby={open ? id : undefined}
-      onMouseEnter={show} onMouseLeave={hide} onFocus={show} onBlur={hide}
-      onClick={event => event.stopPropagation()}>
+      onMouseEnter={withinLayer ? undefined : show} onPointerMove={withinLayer ? show : undefined} onMouseLeave={hide} onFocus={withinLayer ? undefined : show} onBlur={hide}
+      onClick={event => { event.stopPropagation(); if (withinLayer) { if (open) hide(); else show() } }}>
       <span className="fc-tooltip-help-icon" aria-hidden="true"/>
     </button>
-    {rendered && createPortal(guide ?
+    {rendered && (withinLayer ? (guide ?
+      <span ref={bubble} id={id} role="tooltip" popover="manual" className={`fc-tooltip-card ${position.above ? 'fc-tooltip-card--above' : ''} ${open ? 'fc-tooltip--open' : ''}`} style={{ left: position.left, top: position.top }}>
+        <span className="fc-tooltip-card-cover"><img src={guide.cover} alt=""/></span>
+        <span className="fc-tooltip-card-content">
+          <span className="fc-tooltip-card-title"><span>{guide.title}</span><i aria-hidden="true"/><span>创作指南</span></span>
+          <span className="fc-tooltip-card-description">{text}</span>
+        </span>
+      </span> :
+      <span ref={bubble} id={id} role="tooltip" popover="manual" className={`fc-tooltip ${position.above ? '' : 'fc-tooltip--below'} ${open ? 'fc-tooltip--open' : ''}`} style={{ left: position.left, top: position.top }}>{text}</span>) : createPortal(guide ?
       <span ref={bubble} id={id} role="tooltip" className={`fc-tooltip-card ${position.above ? 'fc-tooltip-card--above' : ''} ${open ? 'fc-tooltip--open' : ''}`} style={{ left: position.left, top: position.top }}>
         <span className="fc-tooltip-card-cover"><img src={guide.cover} alt=""/></span>
         <span className="fc-tooltip-card-content">
@@ -53,6 +64,6 @@ export function TooltipHelp({ text, label, guide }: { text: string; label: strin
           <span className="fc-tooltip-card-description">{text}</span>
         </span>
       </span> :
-      <span ref={bubble} id={id} role="tooltip" className={`fc-tooltip ${open ? 'fc-tooltip--open' : ''}`} style={{ left: position.left, top: position.top }}>{text}</span>, document.body)}
+      <span ref={bubble} id={id} role="tooltip" className={`fc-tooltip ${open ? 'fc-tooltip--open' : ''}`} style={{ left: position.left, top: position.top }}>{text}</span>, document.body))}
   </>
 }
