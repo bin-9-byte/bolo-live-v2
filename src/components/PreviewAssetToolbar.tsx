@@ -6,17 +6,16 @@ export type PreviewAssetKind = 'character' | 'background' | 'vehicle'
 const items: { kind: PreviewAssetKind; label: string }[] = [
   { kind: 'character', label: '人物' },
   { kind: 'background', label: '背景' },
-  { kind: 'vehicle', label: '车型' },
+  { kind: 'vehicle', label: '产品' },
 ]
 
-export function PreviewAssetToolbar({ media, loading, composing, ready, screenReady, children, onUpload, onCompose }: {
+export function PreviewAssetToolbar({ media, loading, composing, ready, screenReady, children, onCompose }: {
   media: Partial<Record<PreviewAssetKind, string>>
   loading: Partial<Record<PreviewAssetKind, boolean>>
   composing: boolean
   ready: boolean
   screenReady: boolean
   children: ReactNode
-  onUpload: (kind: PreviewAssetKind) => void
   onCompose: () => void
 }) {
   const reduced = useReducedMotion()
@@ -30,8 +29,8 @@ export function PreviewAssetToolbar({ media, loading, composing, ready, screenRe
         const image = media[kind]
         const busy = !!loading[kind]
         const state = busy ? 'loading' : image ? 'uploaded' : 'empty'
-        const description = `${label}${kind === 'vehicle' ? '（可选）' : ''}：${busy ? '上传中' : image ? '已上传，点击替换' : '未上传，点击添加'}`
-        return <motion.button layout key={kind} transition={transition} className="studio-preview-asset-chip" data-state={state} disabled={busy || composing} aria-label={description} title={description} onClick={() => onUpload(kind)}>
+        const description = `${label}${kind === 'vehicle' ? '（可选）' : ''}：${busy ? '上传中' : image ? '已上传' : '未上传'}`
+        return <motion.div layout key={kind} transition={transition} className="studio-preview-asset-chip" data-state={state} role="status" aria-label={description} title={description}>
           <span className="studio-preview-asset-label">{label}</span>
           <span className="studio-preview-asset-separator" aria-hidden="true">·</span>
           <span className="studio-preview-asset-symbol" aria-hidden="true">
@@ -41,11 +40,11 @@ export function PreviewAssetToolbar({ media, loading, composing, ready, screenRe
               </motion.span>
             </AnimatePresence>
           </span>
-        </motion.button>
+        </motion.div>
       })}
     </div>
 
-    <motion.button layout transition={transition} className="studio-preview-compose" disabled={!complete || composing} onClick={onCompose} aria-label={composing ? '正在合成预览' : ready ? '重新合成人物与场景' : '合成人物与场景'}>
+    <motion.button layout transition={transition} className="studio-preview-compose" data-state={composing ? 'loading' : complete ? 'ready' : 'disabled'} disabled={!complete || composing} onClick={onCompose} aria-label={composing ? '正在合成预览' : ready ? '重新合成人物与场景' : '合成人物与场景'}>
       <Plus size={15} strokeWidth={1.8} aria-hidden="true"/>
       <AnimatePresence initial={false} mode="wait"><motion.span key={composing ? 'busy' : ready ? 'again' : 'compose'} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={transition}>{composing ? '合成中' : ready ? '重新合成' : '合成人物与场景'}</motion.span></AnimatePresence>
     </motion.button>

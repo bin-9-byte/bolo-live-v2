@@ -34,7 +34,7 @@ export default function Preview() {
   const target = useRef<'background' | 'character' | 'vehicle' | 'voice' | 'script'>('background')
   const urls = useRef<string[]>([])
   useEffect(() => () => urls.current.forEach(url => URL.revokeObjectURL(url)), [])
-  const chooseFile = (kind: typeof target.current) => { target.current = kind; if (file.current) { file.current.accept = kind === 'voice' ? 'audio/*' : kind === 'script' ? '.txt,.md' : 'image/*'; file.current.click() } }
+  const chooseFile = (kind: typeof target.current) => { target.current = kind; if (file.current) { file.current.accept = kind === 'voice' ? '.mp3,.wav,.m4a' : kind === 'script' ? '.txt,.md' : 'image/*'; file.current.click() } }
   const action = (kind: 'background' | 'character', a: AssetAction) => {
     if (a === 'upload') chooseFile(kind)
     else if (a === 'library' && kind === 'background') setLibrary(true)
@@ -45,7 +45,7 @@ export default function Preview() {
     const kind = target.current
     if (kind === 'script') { const content = await selected.text(); setText(content.slice(0, SCRIPT_MAX_LENGTH)); setScript('Variant2'); if (content.length > SCRIPT_MAX_LENGTH) setNotice(`已导入前 ${SCRIPT_MAX_LENGTH} 字，超出组件字数限制的部分未导入。`) }
     else {
-      if (!(kind === 'voice' ? selected.type.startsWith('audio/') : selected.type.startsWith('image/'))) { setNotice('文件类型不匹配，请重新选择。'); e.target.value = ''; return }
+      if (!(kind === 'voice' ? /\.(mp3|wav|m4a)$/i.test(selected.name) : selected.type.startsWith('image/'))) { setNotice(kind === 'voice' ? '仅支持 MP3、WAV、M4A 格式的音频文件。' : '文件类型不匹配，请重新选择。'); e.target.value = ''; return }
       const url = URL.createObjectURL(selected); urls.current.push(url)
       if (kind === 'background') { setImage(url); setBackground('已上传') }
       if (kind === 'character') setPortrait(url)
@@ -63,7 +63,7 @@ export default function Preview() {
         <section><h2>脚本卡片</h2>{scriptStates.map((state, i) => <figure key={state}><figcaption>{scriptLabels[i]} · {state} <span>{scriptSizes[i]}</span></figcaption><ScriptCard state={state}/></figure>)}</section>
       <section><h2>贴纸卡片</h2>{stickerStates.map(state => <figure key={state}><figcaption>{state} <span>765 × 226</span></figcaption><StickerCard state={state}/></figure>)}</section>
       </div> : <div className="showcase-live">
-        <section className="showcase-section"><h2>背景场景卡片 <span>460 × 305</span></h2><States values={backgroundStates} value={background} onChange={setBackground}/><BackgroundCard state={background} onStateChange={setBackground} imageUrl={image} vehicleImageUrl={vehicle} onAction={a => action('background', a)} onVehicleAction={a => a === 'upload' ? chooseFile('vehicle') : setNotice('车型素材库和 AI 服务尚未接入，可使用本地上传预览。')}/></section>
+        <section className="showcase-section"><h2>背景场景卡片 <span>460 × 305</span></h2><States values={backgroundStates} value={background} onChange={setBackground}/><BackgroundCard state={background} onStateChange={setBackground} imageUrl={image} vehicleImageUrl={vehicle} onAction={a => action('background', a)} onVehicleAction={a => a === 'upload' ? chooseFile('vehicle') : setNotice('产品素材库和 AI 服务尚未接入，可使用本地上传预览。')}/></section>
         <section className="showcase-section"><h2>人物音色卡片 <span>275 × 396</span></h2><States values={characterStates} value={character} onChange={setCharacter}/><CharacterVoiceCard state={character} voiceState={voice} onVoiceStateChange={setVoice} imageUrl={portrait} audioUrl={audio} onAction={a => action('character', a)} onVoiceUpload={() => chooseFile('voice')} onVoiceLibrary={() => setNotice('音色库尚未接入。上传本地音频后可试听、暂停和拖动进度。')}/></section>
         <section className="showcase-section"><h2>音色卡片 <span>241 × 68</span></h2><States values={voiceStates} value={voice} onChange={setVoice}/><VoiceCard state={voice} onStateChange={setVoice} audioUrl={audio} name={audioName} onUpload={() => chooseFile('voice')} onLibrary={() => setNotice('音色库尚未接入。上传本地音频后可试听、暂停和拖动进度。')}/></section>
         <section className="showcase-section showcase-script"><h2>脚本卡片 <span>6 个变体</span></h2><States values={scriptStates} labels={scriptLabels} value={script} onChange={setScript}/><ScriptCard state={script} onStateChange={setScript} value={text} onChange={setText} onUpload={() => chooseFile('script')} onGenerate={() => { setScript('Variant3'); setNotice('正在展示「信息分析中」设计状态，尚未调用 AI 服务。可点击「生成完成」查看富文本设计示例。') }}/></section>

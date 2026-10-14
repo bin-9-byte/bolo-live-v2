@@ -1,0 +1,58 @@
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import './tooltip.less'
+
+export type TooltipGuide = { title: string; text: string; cover: string }
+
+export function TooltipHelp({ text, label, guide }: { text: string; label: string; guide?: TooltipGuide }) {
+  const variant = guide ? 'card' : 'bubble'
+  const id = useId()
+  const trigger = useRef<HTMLButtonElement>(null)
+  const bubble = useRef<HTMLSpanElement>(null)
+  const [open, setOpen] = useState(false)
+  const [rendered, setRendered] = useState(false)
+  const [position, setPosition] = useState({ left: 0, top: 0, above: false })
+
+  useLayoutEffect(() => {
+    if (!rendered) return
+    const place = () => {
+      const rect = trigger.current?.getBoundingClientRect()
+      if (!rect) return
+      const bubbleRect = bubble.current?.getBoundingClientRect()
+      const halfWidth = (bubbleRect?.width ?? 0) / 2
+      const cardHeight = bubbleRect?.height ?? 274
+      const above = variant === 'card' && rect.top >= cardHeight + 8
+      setPosition({ left: Math.min(Math.max(rect.left + rect.width / 2, halfWidth + 16), window.innerWidth - halfWidth - 16), top: variant === 'card' && !above ? rect.bottom : rect.top, above })
+    }
+    place()
+    window.addEventListener('scroll', place, true)
+    window.addEventListener('resize', place)
+    return () => { window.removeEventListener('scroll', place, true); window.removeEventListener('resize', place) }
+  }, [rendered, variant])
+
+  useEffect(() => {
+    if (open || !rendered) return
+    const timeout = window.setTimeout(() => setRendered(false), 140)
+    return () => window.clearTimeout(timeout)
+  }, [open, rendered])
+
+  const show = () => { setRendered(true); setOpen(true) }
+  const hide = () => setOpen(false)
+
+  return <>
+    <button ref={trigger} type="button" className={`fc-tooltip-help fc-tooltip-help--${variant}`} aria-label={label} aria-describedby={open ? id : undefined}
+      onMouseEnter={show} onMouseLeave={hide} onFocus={show} onBlur={hide}
+      onClick={event => event.stopPropagation()}>
+      <span className="fc-tooltip-help-icon" aria-hidden="true"/>
+    </button>
+    {rendered && createPortal(guide ?
+      <span ref={bubble} id={id} role="tooltip" className={`fc-tooltip-card ${position.above ? 'fc-tooltip-card--above' : ''} ${open ? 'fc-tooltip--open' : ''}`} style={{ left: position.left, top: position.top }}>
+        <span className="fc-tooltip-card-cover"><img src={guide.cover} alt=""/></span>
+        <span className="fc-tooltip-card-content">
+          <span className="fc-tooltip-card-title"><span>{guide.title}</span><i aria-hidden="true"/><span>创作指南</span></span>
+          <span className="fc-tooltip-card-description">{text}</span>
+        </span>
+      </span> :
+      <span ref={bubble} id={id} role="tooltip" className={`fc-tooltip ${open ? 'fc-tooltip--open' : ''}`} style={{ left: position.left, top: position.top }}>{text}</span>, document.body)}
+  </>
+}

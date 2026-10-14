@@ -15,14 +15,21 @@ const choices = [['产品推广/广告', '知识科普/教程', '品牌形象/�
 type Draft = { title: string; script: string; answers: string[]; custom: string[] }
 const initialDraft: Draft = { title: '数字人生成视频', script: '', answers: choices.map(c => c[0]), custom: ['', '', ''] }
 type MediaKind = 'background' | 'vehicle' | 'character' | 'voice' | 'script' | 'attachment' | 'sticker'
+type ComposerAttachment = { id: number; name: string; size: number; preview?: string; extension: string }
 type PreviewStatus = 'idle' | 'generating' | 'ready' | 'error'
 type GenerationTarget = 'script' | 'character' | 'background' | 'vehicle'
+type ComposerTarget = 'global' | GenerationTarget
+type ComposerPromptMode = 'structured' | 'free'
 type GenerationTask = { id: number; target: GenerationTarget; status: 'draft' | 'generating' | 'ready'; candidate: string; prompt: string }
 type ChatMessage =
-  | { kind: 'user'; id: number; text: string }
+  | { kind: 'user'; id: number; text: string; attachments?: ComposerAttachment[] }
   | { kind: 'generation'; id: number; target: GenerationTarget; status: 'generating' | 'ready' | 'applied' | 'discarded'; candidate: string }
   | { kind: 'submission'; id: number; answers: string[]; phase: 'thinking' | 'reply' | 'generating'; expanded: boolean }
-const generationNames: Record<GenerationTarget, string> = { script: '脚本内容', character: '人物形象', background: '背景场景', vehicle: '车型素材' }
+const generationNames: Record<GenerationTarget, string> = { script: '脚本内容', character: '人物形象', background: '背景场景', vehicle: '产品素材' }
+const composerTargetNames: Record<ComposerTarget, string> = { global: '全局需求', ...generationNames }
+const composerTargets: { value: ComposerTarget; label: string }[] = [
+  { value: 'global', label: '全局' }, { value: 'script', label: '脚本' }, { value: 'character', label: '人物' }, { value: 'background', label: '背景' }, { value: 'vehicle', label: '产品' },
+]
 const demoImages: Record<Exclude<GenerationTarget, 'script'>, string> = {
   character: asset('165da.png'), background: asset('13e93.png'), vehicle: asset('demo-vehicle.svg'),
 }
@@ -35,7 +42,7 @@ const libraryImage = (file: string) => asset(`asset-library-${file}.png`)
 function AssetLibraryContent({ kind, onClose, onConfirm }: { kind: MediaKind; onClose: () => void; onConfirm: (image: string) => void }) {
   const [category, setCategory] = useState<(typeof libraryCategories)[number]>('全部')
   const [selected, setSelected] = useState<number | null>(null)
-  const title = kind === 'character' ? '人物资产库' : kind === 'voice' ? '音色资产库' : kind === 'background' ? '背景资产库' : kind === 'vehicle' ? '车型资产库' : '贴纸资产库'
+  const title = kind === 'character' ? '人物资产库' : kind === 'voice' ? '音色资产库' : kind === 'background' ? '背景资产库' : kind === 'vehicle' ? '产品资产库' : '贴纸资产库'
   return <div className="studio-library">
     <header className="studio-library-header"><h2>{title}</h2><button className="studio-library-close" aria-label="关闭资产库" onClick={onClose}><img src={asset('asset-library-ac691.svg')} alt=""/></button></header>
     <div className="studio-library-content">
@@ -78,7 +85,11 @@ export function Studio() {
   const submissionOperation = useRef(0)
   const [informationSubmitted, setInformationSubmitted] = useState(false)
   const [message, setMessage] = useState('')
-  const [attachment, setAttachment] = useState('')
+  const [composerPromptMode, setComposerPromptMode] = useState<ComposerPromptMode>('free')
+  const [composerTarget, setComposerTarget] = useState<ComposerTarget>('global')
+  const [composerMenu, setComposerMenu] = useState<'target' | null>(null)
+  const [attachments, setAttachments] = useState<ComposerAttachment[]>([])
+  const attachmentId = useRef(0)
   const [tab, setTab] = useState('edit')
   const [thinking, setThinking] = useState(false)
   const [editingTitle, setEditingTitle] = useState(false)
@@ -94,8 +105,10 @@ export function Studio() {
   const [historyText, setHistoryText] = useState<string>()
   const [libraryTarget, setLibraryTarget] = useState<MediaKind>('background')
   const fileInput = useRef<HTMLInputElement>(null)
+  const attachmentFileInput = useRef<HTMLInputElement>(null)
   const fileKind = useRef<MediaKind>('background')
   const composer = useRef<HTMLTextAreaElement>(null)
+  const composerControls = useRef<HTMLDivElement>(null)
   const chatBody = useRef<HTMLDivElement>(null)
   const stickerOperation = useRef(0)
   const objectUrls = useRef<string[]>([])
@@ -143,19 +156,21 @@ export function Studio() {
     scriptEditHistoryAdded.current = false
     setScriptEditText(previous.text); setScriptPhase(previous.phase); setScriptError('')
   }
-  const prepareGeneration = (target: GenerationTarget) => {
-    const operation = ++generationOperation.current
-    if (generationTask?.status !== 'draft') setMessages(current => current.map(item => item.kind === 'generation' && item.id === generationTask?.id ? { ...item, status: 'discarded' } : item))
-    const details = [
-      `请生成【${generationNames[target]}】`,
+  const structuredPrompt = (target: ComposerTarget) => [
+      target === 'global' ? '请协助完善【数字人视频工作流】' : `请生成【${generationNames[target]}】`,
       `项目：${draft.title || '数字人视频'}`,
-      target === 'script' ? `主题：${draft.custom[0] || draft.answers[0]}` : target === 'character' ? '人物设定：适合当前视频主题的数字人形象' : target === 'background' ? '场景描述：适合当前视频主题的背景空间' : '车型要求：适合当前视频主题的车型素材',
+      target === 'global' ? `视频类型：${draft.custom[0] || draft.answers[0]}` : target === 'script' ? `主题：${draft.custom[0] || draft.answers[0]}` : target === 'character' ? '人物设定：适合当前视频主题的数字人形象' : target === 'background' ? '场景描述：适合当前视频主题的背景空间' : '产品要求：适合当前视频主题的产品素材',
       `用途：${draft.custom[1] || draft.answers[1]}`,
       `风格：${draft.custom[2] || draft.answers[2]}`,
       '补充要求：',
     ].join('\n')
+  const prepareGeneration = (target: GenerationTarget) => {
+    const operation = ++generationOperation.current
+    if (generationTask?.status !== 'draft') setMessages(current => current.map(item => item.kind === 'generation' && item.id === generationTask?.id ? { ...item, status: 'discarded' } : item))
+    setComposerTarget(target)
+    setComposerPromptMode('structured')
     setGenerationTask({ id: operation, target, status: 'draft', candidate: '', prompt: '' })
-    setMessage(details)
+    setMessage(structuredPrompt(target))
     setTab('chat')
     requestAnimationFrame(() => composer.current?.focus())
   }
@@ -206,6 +221,21 @@ export function Studio() {
     const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `${draft.title || '数字人视频'}.json`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
   useEffect(() => { if (!notice) return; const t = setTimeout(() => setNotice(''), 4000); return () => clearTimeout(t) }, [notice])
+  useEffect(() => {
+    const textarea = composer.current
+    if (!textarea) return
+    textarea.style.height = '0px'
+    const nextHeight = Math.min(Math.max(textarea.scrollHeight, 44), 144)
+    textarea.style.height = `${nextHeight}px`
+    textarea.style.overflowY = textarea.scrollHeight > 144 ? 'auto' : 'hidden'
+  }, [message])
+  useEffect(() => {
+    if (!composerMenu) return
+    const close = (event: PointerEvent) => { if (!composerControls.current?.contains(event.target as Node)) setComposerMenu(null) }
+    const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') setComposerMenu(null) }
+    document.addEventListener('pointerdown', close); document.addEventListener('keydown', escape)
+    return () => { document.removeEventListener('pointerdown', close); document.removeEventListener('keydown', escape) }
+  }, [composerMenu])
   useEffect(() => { if (dialog) dialogRef.current?.showModal(); else dialogRef.current?.close() }, [dialog])
   useEffect(() => {
     const el = chatBody.current; if (!el) return
@@ -217,10 +247,20 @@ export function Studio() {
     return () => observer.disconnect()
   }, [messages, thinking])
   useEffect(() => () => { stickerOperation.current++; scriptOperation.current++; generationOperation.current++; previewOperation.current++; submissionOperation.current++; objectUrls.current.forEach(u => URL.revokeObjectURL(u)) }, [])
-  const upload = (kind: MediaKind) => { fileKind.current = kind; const input = fileInput.current; if (!input) return; input.accept = kind === 'voice' ? 'audio/*' : kind === 'script' ? '.txt,.md' : kind === 'attachment' ? 'image/*,.txt,.md,.pdf' : 'image/*'; input.click() }
+  const upload = (kind: MediaKind) => { fileKind.current = kind; if (kind === 'attachment') { attachmentFileInput.current?.click(); return } const input = fileInput.current; if (!input) return; input.accept = kind === 'voice' ? '.mp3,.wav,.m4a' : kind === 'script' ? '.txt,.md' : 'image/*'; input.click() }
   const readFile = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]; if (!file) return
     const kind = fileKind.current
+    if (kind === 'attachment') {
+      const next = Array.from(e.target.files ?? []).map(item => {
+        const preview = item.type.startsWith('image/') ? URL.createObjectURL(item) : undefined
+        if (preview) objectUrls.current.push(preview)
+        return { id: ++attachmentId.current, name: item.name, size: item.size, preview, extension: item.name.split('.').pop()?.toUpperCase() || '文件' }
+      })
+      setAttachments(current => [...current, ...next])
+      e.target.value = ''
+      return
+    }
     const stickerRequest = kind === 'sticker' ? ++stickerOperation.current : 0
     if (kind === 'script') {
       if (scriptPhase !== 'error') scriptReturnState.current = { phase: scriptPhase, text: scriptEditText }
@@ -237,8 +277,7 @@ export function Studio() {
         }
       } catch (error) { if (scriptOperation.current === operation) { setScriptError(error instanceof Error ? error.message : '文件读取失败，请重新上传。'); setScriptPhase('error') } }
     }
-    else if (kind === 'attachment') { setAttachment(file.name) }
-    else if (kind === 'voice') { const url = URL.createObjectURL(file); objectUrls.current.push(url); setVoiceState('上传中'); await new Promise(resolve => setTimeout(resolve, 450)); setMedia(m => ({ ...m, voice: url })); setVoiceState('已上传'); setSaved(false) }
+    else if (kind === 'voice') { if (!/\.(mp3|wav|m4a)$/i.test(file.name)) { setNotice('仅支持 MP3、WAV、M4A 格式的音频文件'); e.target.value = ''; return } const url = URL.createObjectURL(file); objectUrls.current.push(url); setVoiceState('上传中'); await new Promise(resolve => setTimeout(resolve, 450)); setMedia(m => ({ ...m, voice: url })); setVoiceState('已上传'); setSaved(false) }
     else {
       const url = URL.createObjectURL(file)
       setImageLoading(current => ({ ...current, [kind]: true }))
@@ -275,7 +314,7 @@ export function Studio() {
     setSaved(false)
     setDialog(null)
   }
-  const send = () => { if (!message.trim() && !attachment) return; const prompt = message.trim(); setMessages(m => [...m, { kind: 'user', id: ++chatMessageId.current, text: prompt || `附件：${attachment}` }]); setMessage(''); setAttachment(''); if (generationTask && prompt) beginGeneration(generationTask.target, prompt); else setNotice('需求已保留；AI 生成服务尚未连接') }
+  const send = () => { if (!message.trim() && !attachments.length) return; const prompt = message.trim(); const sentAttachments = attachments.map(item => ({ ...item })); setMessages(m => [...m, { kind: 'user', id: ++chatMessageId.current, text: prompt, attachments: sentAttachments }]); setMessage(''); setAttachments([]); const target = generationTask?.target ?? composerTarget; if (prompt && target !== 'global') beginGeneration(target, prompt); else setNotice(prompt ? '全局需求已保留；AI 对话服务尚未连接' : '附件已保留；AI 生成服务尚未连接') }
   const submit = () => {
     if (informationSubmitted) return
     const answers = questions.map((_, index) => draft.custom[index].trim() || draft.answers[index])
@@ -330,7 +369,7 @@ export function Studio() {
     </header>
     <nav className="studio-mobile-nav" aria-label="工作区域">{[['chat', '对话'], ['edit', '编辑'], ['preview', '预览']].map(([key, label]) => <button key={key} aria-pressed={tab === key} onClick={() => setTab(key)}>{label}</button>)}</nav>
     <main className={`studio-workspace studio-view-${tab}`}>
-      <aside className={`studio-chat studio-panel ${generationTask ? 'studio-chat--generation' : ''}`} aria-label="AI 对话">
+      <aside className="studio-chat studio-panel" aria-label="AI 对话">
         <header className="studio-chat-header"><button onClick={() => setDialog('history')}>未命名对话<Glyph file="8530c.svg"/></button></header>
         <div className="studio-chat-scroll" ref={chatBody}><div className="studio-conversation">
           <div className="studio-user-bubble">帮我生成一个小红书图文工作流，可以一键发布小红书的那种</div>
@@ -342,24 +381,39 @@ export function Studio() {
             </section> : <div className="studio-questionnaire">{questions.map((q, i) => <fieldset key={q}><legend>{q}</legend><div className="studio-choices">{choices[i].map(c => <button key={c} aria-pressed={draft.answers[i] === c && !draft.custom[i]} onClick={() => changed({ ...draft, answers: draft.answers.map((v, j) => j === i ? c : v), custom: draft.custom.map((v, j) => j === i ? '' : v) })}>{c}</button>)}</div><label className="studio-other"><Glyph file="f22e1.svg"/><input aria-label={`问题${i + 1}的其他想法`} placeholder="我有其他想法" value={draft.custom[i]} onChange={e => changed({ ...draft, custom: draft.custom.map((v, j) => j === i ? e.target.value : v) })}/></label></fieldset>)}</div>}
             {!informationSubmitted && <button className="studio-submit" onClick={submit}>提交信息</button>}
           </div>
-          {messages.map(m => m.kind === 'user' ? <div className="studio-user-bubble" key={`user-${m.id}`}>{m.text}</div> : m.kind === 'submission' ? <article className="studio-submission-flow" key={`submission-${m.id}`} aria-label="信息确认后的生成进度">
+          {messages.map(m => m.kind === 'user' ? <article className="studio-user-message" key={`user-${m.id}`} aria-label="已发送的需求">
+            {!!m.attachments?.length && <div className="studio-user-attachments">{m.attachments.map(item => item.preview ? <img key={item.id} src={item.preview} alt={item.name} title={item.name}/> : <div className="studio-user-file" key={item.id} title={item.name}><span>{item.extension.slice(0, 3)}</span><strong>{item.name}</strong></div>)}</div>}
+            {m.text && <div className="studio-user-bubble">{m.text}</div>}
+          </article> : m.kind === 'submission' ? <article className="studio-submission-flow" key={`submission-${m.id}`} aria-label="信息确认后的生成进度">
             {m.phase === 'thinking' ? <div className="studio-submission-thinking" role="status">正在思考<span className="studio-submission-dots" aria-hidden="true">···</span></div> : <button className="studio-thinking" aria-expanded={m.expanded} onClick={() => setMessages(current => current.map(item => item.kind === 'submission' && item.id === m.id ? { ...item, expanded: !item.expanded } : item))}>已完成思考<Glyph file="0a566.svg" className={m.expanded ? '' : 'studio-turn'}/></button>}
             {m.expanded && <p className="studio-submission-thought">已根据视频类型、用途和风格整理脚本方向。</p>}
             {m.phase !== 'thinking' && <div className="studio-submission-reply"><p>已收到需求，开始生成脚本。</p></div>}
             {m.phase === 'generating' && <div className="studio-submission-progress" role="status"><span>脚本大纲生成中</span><span className="studio-submission-spinner" aria-hidden="true"/></div>}
           </article> : <article className="studio-generated-message" key={`generation-${m.id}`} aria-label={`${generationNames[m.target]}生成内容`}>
-            <div className="studio-generated-meta"><strong>{generationNames[m.target]}</strong><span>{m.status === 'generating' ? '生成中' : m.status === 'ready' ? '待确认' : m.status === 'applied' ? '已回填' : '未使用'}</span></div>
+            <div className="studio-generated-meta"><strong>{generationNames[m.target]}</strong><div className="studio-generated-actions"><span>{m.status === 'generating' ? '生成中' : m.status === 'ready' ? '待确认' : m.status === 'applied' ? '已回填' : '未使用'}</span>{m.status === 'ready' && generationTask?.id === m.id && <><button aria-label="确认回填" title="确认回填" onClick={applyGeneration}><svg viewBox="0 0 20 20" width="14" height="14" aria-hidden="true"><path d="m4.5 10 3.5 3.5 7.5-7.5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg></button><button aria-label="放弃生成结果" title="放弃生成结果" onClick={discardGeneration}><svg viewBox="0 0 20 20" width="14" height="14" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/></svg></button></>}</div></div>
             {m.status === 'generating' ? <p className="studio-generated-loading">正在准备本地示例结果…</p> : !m.candidate ? <p className="studio-generated-loading">已取消生成</p> : <><span className="studio-generated-demo">本地示例</span>{m.target === 'script' ? <p className="studio-generated-text">{m.candidate}</p> : <img className="studio-generated-image" src={m.candidate} alt={`${generationNames[m.target]}示例预览`}/>}</>}
             {m.target === 'script' && m.candidate && m.status !== 'generating' && <button className="studio-script-history-link" onClick={() => openScriptHistory(m.candidate)}>查看脚本历史</button>}
           </article>)}
         </div></div>
-        {generationTask && <section className="studio-generation" aria-label={`${generationNames[generationTask.target]}生成任务`} aria-live="polite">
-          <span className={`studio-generation-indicator ${generationTask.status === 'generating' ? 'studio-generation-indicator--active' : ''}`} aria-hidden="true"/>
-          <strong>{generationNames[generationTask.target]}<span> · {generationTask.status === 'draft' ? '待发送' : generationTask.status === 'generating' ? '生成中' : '待确认'}</span></strong>
-          {generationTask.status === 'ready' && <button className="studio-generation-confirm" aria-label="确认回填" title="确认回填" onClick={applyGeneration}><svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="m4.5 10 3.5 3.5 7.5-7.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg></button>}
-          <button className="studio-generation-close" aria-label="关闭生成任务" onClick={discardGeneration}><svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg></button>
-        </section>}
-        <div className={`studio-composer ${generationTask?.status === 'draft' ? 'studio-composer--prompt' : ''}`}><textarea ref={composer} aria-label="对话需求" placeholder={generationTask ? `补充${generationNames[generationTask.target]}的生成要求（可选）` : '输入你想要的需求，如：帮我生成一个数字人口播工作流'} value={message} onChange={e => setMessage(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && generationTask?.status !== 'draft') { e.preventDefault(); send() } }}/>{attachment && <button className="studio-attachment" onClick={() => setAttachment('')}>{attachment} ×</button>}<div className="studio-compose-actions"><div><button aria-label="添加附件" onClick={() => upload('attachment')}><Glyph file="dcc27.svg"/></button><button aria-label="编辑脚本" onClick={startScriptEdit}><Glyph file="05e6b.svg"/></button><button className="studio-mode" onClick={() => setNotice('当前为数字人口播工作流')}><Glyph file="c6d65.svg"/>数字人<Glyph file="b5034.svg"/></button></div><button className={`studio-send ${message.trim() || attachment ? 'studio-send--ready' : ''}`} aria-label="发送需求" disabled={!message.trim() && !attachment} onClick={send}><svg viewBox="0 0 32 32" width="32" height="32" aria-hidden="true"><path d="M16 23V9m0 0-6 6m6-6 6 6" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg></button></div></div>
+        <div className={`studio-composer ${generationTask?.status === 'draft' ? 'studio-composer--prompt' : ''} ${attachments.length ? 'studio-composer--attached' : ''}`}>
+          {attachments.length > 0 && <div className="studio-attachments" aria-label="已上传附件">
+            {attachments.map(item => <div className={`studio-attachment ${item.preview ? 'studio-attachment--image' : 'studio-attachment--file'}`} key={item.id}>
+              {item.preview ? <img src={item.preview} alt={item.name}/> : <><span className="studio-attachment-file" aria-hidden="true">{item.extension.slice(0, 3)}</span><span className="studio-attachment-info"><span title={item.name}>{item.name}</span><small>{item.extension} · {(item.size / 1024 / 1024).toFixed(1)}MB</small></span></>}
+              <button type="button" aria-label={`移除附件 ${item.name}`} onClick={() => { if (item.preview) URL.revokeObjectURL(item.preview); setAttachments(current => current.filter(attachment => attachment.id !== item.id)) }}>×</button>
+            </div>)}
+          </div>}
+          <textarea ref={composer} aria-label="对话需求" placeholder={composerPromptMode === 'structured' ? `描述${composerTargetNames[composerTarget]}，或从结构化模板开始` : `自由输入${composerTargetNames[composerTarget]}`} value={message} onChange={e => setMessage(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && generationTask?.status !== 'draft') { e.preventDefault(); send() } }}/>
+          <div className="studio-compose-actions"><div ref={composerControls}>
+            <button aria-label="添加附件" onClick={() => upload('attachment')}><Glyph file="dcc27.svg"/></button>
+            <button className={`studio-prompt-toggle ${composerPromptMode === 'structured' ? 'studio-prompt-toggle--active' : ''}`} aria-label={composerPromptMode === 'structured' ? '取消结构化提示词' : '激活结构化提示词'} aria-pressed={composerPromptMode === 'structured'} title={composerPromptMode === 'structured' ? '结构化提示词已激活' : '自由输入，点击激活结构化提示词'} onClick={() => { const structured = composerPromptMode !== 'structured'; setComposerPromptMode(structured ? 'structured' : 'free'); if (structured) setMessage(structuredPrompt(composerTarget)); else { if (message.startsWith('请生成【') || message.startsWith('请协助完善【')) setMessage(''); if (generationTask?.status === 'draft') setGenerationTask(null) } requestAnimationFrame(() => composer.current?.focus()) }}><Glyph file="05e6b.svg"/></button>
+            <span className="studio-compose-control">
+              <button className="studio-mode" aria-label={`生成模块：${composerTargets.find(item => item.value === composerTarget)?.label}`} aria-haspopup="menu" aria-expanded={composerMenu === 'target'} onClick={() => setComposerMenu(current => current === 'target' ? null : 'target')}><Glyph file="c6d65.svg"/>{composerTargets.find(item => item.value === composerTarget)?.label}<Glyph file="b5034.svg"/></button>
+              {composerMenu === 'target' && <span className="studio-compose-menu studio-compose-menu--target" role="menu" aria-label="选择生成模块">
+                {composerTargets.map(item => <button key={item.value} role="menuitemradio" aria-checked={composerTarget === item.value} onClick={() => { setComposerTarget(item.value); if (composerPromptMode === 'structured') setMessage(structuredPrompt(item.value)); if (generationTask?.status === 'draft') setGenerationTask(current => item.value === 'global' ? null : current ? { ...current, target: item.value } : current); setComposerMenu(null); requestAnimationFrame(() => composer.current?.focus()) }}>{item.label}<span aria-hidden="true">{composerTarget === item.value ? '✓' : ''}</span></button>)}
+              </span>}
+            </span>
+          </div><button className={`studio-send ${message.trim() || attachments.length ? 'studio-send--ready' : ''}`} aria-label="发送需求" disabled={!message.trim() && !attachments.length} onClick={send}><svg viewBox="0 0 32 32" width="32" height="32" aria-hidden="true"><path d="M16 23V9m0 0-6 6m6-6 6 6" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg></button></div>
+        </div>
       </aside>
       <section ref={studioEditor} className={`studio-editor ${expanded ? 'studio-editor--expanded' : ''}`} aria-label="创作编辑区"><div className="studio-editor-flow">
         <ScriptCard onHistory={() => scriptHistoryOpen ? setScriptHistoryOpen(false) : openScriptHistory()} historyPanel={scriptHistoryOpen ? <ScriptHistory key={historyText ?? 'latest'} initialText={historyText} versions={versions} currentText={draft.script} onUse={restoreScript} onClose={() => setScriptHistoryOpen(false)}/> : undefined} phase={scriptPhase} expanded={scriptExpanded} confirmed={scriptConfirmed} onExpandedChange={setScriptExpanded} value={draft.script} onChange={updateScriptText} onEdit={startScriptEdit} onConfirm={confirmScript} onCancel={cancelScriptEdit} onUpload={() => upload('script')} onGenerate={() => prepareGeneration('script')} onRetry={() => upload('script')} fileName={scriptFileName} error={scriptError}/>
@@ -369,7 +423,7 @@ export function Studio() {
         </div>
       </div></section>
       <aside className="studio-preview studio-panel" aria-label="视频预览"><div className="studio-preview-main">
-        <PreviewAssetToolbar media={media} loading={imageLoading} composing={previewStatus === 'generating'} ready={previewCurrent || previewStale} screenReady={previewCurrent} onUpload={upload} onCompose={startPreviewComposition}>
+        <PreviewAssetToolbar media={media} loading={imageLoading} composing={previewStatus === 'generating'} ready={previewCurrent || previewStale} screenReady={previewCurrent} onCompose={startPreviewComposition}>
           {previewCurrent ? <><img className="studio-composite-image" src={asset('b6415.png')} alt="合成画面本地示例" onError={() => setPreviewStatus('error')}/>{stickerImage && <img className="studio-preview-sticker" src={stickerImage} alt="已叠加贴纸"/>}</> : <div className="studio-preview-placeholder" role="status">
             {previewStatus === 'generating' && previewSource === previewInputKey ? <><span className="studio-preview-spinner" aria-hidden="true"/><strong>正在合成预览画面</strong></>
               : <><Glyph file="34d8a.svg"/><strong>{previewAssetsLoading ? '正在准备素材' : previewStale ? '素材已更新，请重新合成' : previewStatus === 'error' ? '画面加载失败，请重试' : hasPreviewAssets ? '素材已就绪，可以开始合成' : `请先添加${missingPreviewAssets}`}</strong></>}
@@ -378,6 +432,7 @@ export function Studio() {
       </div><div className="studio-preview-footer"><p>{productionReady ? '画面、脚本与音色已就绪' : `还需${missingProductionItems}`}</p><button disabled={!productionReady} onClick={() => setDialog('produce')}>执行生产</button></div></aside>
     </main>
     <input type="file" ref={fileInput} hidden onChange={readFile}/>
+    <input type="file" ref={attachmentFileInput} hidden multiple accept="image/*,.txt,.md,.pdf" onChange={readFile}/>
     {notice && <div className="studio-toast" role="status">{notice}</div>}
     <dialog ref={dialogRef} className={`studio-dialog ${dialog === 'library' ? 'studio-dialog--library' : ''}`} onCancel={() => setDialog(null)} onClick={e => { if (e.target === e.currentTarget) setDialog(null) }}>
       {dialog === 'library' ? <AssetLibraryContent kind={libraryTarget} onClose={() => setDialog(null)} onConfirm={confirmLibrary}/> : <><button className="studio-dialog-close" aria-label="关闭弹窗" onClick={() => setDialog(null)}>×</button><h2>{dialog === 'history' ? '项目记录' : dialog === 'publish' ? '发布视频' : '生产配置'}</h2>

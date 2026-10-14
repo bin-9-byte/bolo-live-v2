@@ -1,0 +1,78 @@
+@font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+@radius-control: 12px;
+@radius-surface: 24px;
+@radius-pill: 999px;
+
+.fc-tooltip-help {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: rgba(0, 0, 0, .4);
+  cursor: help;
+  vertical-align: middle;
+}
+.fc-tooltip-help-icon { display: block; width: 12px; height: 12px; background: currentColor; mask: url('/figma-components/info-circle-thin.svg') center / contain no-repeat; }
+.fc-tooltip-help--card { width: 24px; height: 24px; }
+.fc-tooltip-help--card .fc-tooltip-help-icon { width: 16px; height: 16px; mask-image: url('/figma-components/question-mark-circle-thin.svg'); }
+.fc-card .fc-tooltip-help, .fc-voice .fc-tooltip-help,
+.fc-card .fc-tooltip-help:hover, .fc-voice .fc-tooltip-help:hover,
+.fc-card .fc-tooltip-help:focus-visible, .fc-voice .fc-tooltip-help:focus-visible { color: rgba(0, 0, 0, .4); }
+.fc-tooltip-help:focus-visible { outline: 2px solid #aa80ff; outline-offset: 2px; }
+.fc-tooltip {
+  position: fixed;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: max-content;
+  max-width: min(320px, calc(100vw - 32px));
+  padding: 6px 12px;
+  border-radius: @radius-pill;
+  background: rgba(0, 0, 0, .9);
+  color: #fff;
+  font: 400 14px/18px @font;
+  letter-spacing: .0938px;
+  white-space: normal;
+  overflow-wrap: break-word;
+  pointer-events: none;
+  transform: translate(-50%, calc(-100% - 8px));
+}
+.fc-tooltip, .fc-tooltip-card { opacity: 0; translate: 0 4px; transition: opacity 140ms ease, translate 140ms cubic-bezier(.22, 1, .36, 1); }
+.fc-tooltip--open { opacity: 1; translate: 0 0; animation: fc-tooltip-enter 190ms cubic-bezier(.22, 1, .36, 1) both; }
+@keyframes fc-tooltip-enter { from { opacity: 0; translate: 0 4px; } to { opacity: 1; translate: 0 0; } }
+.fc-tooltip-card {
+  position: fixed;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 286px;
+  max-width: calc(100vw - 32px);
+  height: 274px;
+  padding: 8px;
+  gap: 6px;
+  border: 1px solid rgba(0, 0, 0, .02);
+  border-radius: @radius-surface;
+  background: #fff;
+  box-shadow: 0 4px 40px rgba(0, 0, 0, .08);
+  box-sizing: border-box;
+  pointer-events: none;
+  transform: translate(-50%, 8px);
+}
+.fc-tooltip-card--above { transform: translate(-50%, calc(-100% - 8px)); }
+.fc-tooltip-card-cover { display: block; width: 100%; height: 152px; flex: none; overflow: hidden; border-radius: @radius-control; }
+.fc-tooltip-card-cover img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.fc-tooltip-card-content { display: flex; flex-direction: column; width: 100%; height: 100px; padding: 4px; gap: 6px; box-sizing: border-box; }
+.fc-tooltip-card-title { display: flex; align-items: center; width: 100%; height: 18px; flex: none; gap: 6px; color: rgba(0, 0, 0, .8); font: 400 11px/14px @font; white-space: nowrap; }
+.fc-tooltip-card-title i { width: 3px; height: 3px; flex: none; border-radius: 50%; background: rgba(0, 0, 0, .4); }
+.fc-tooltip-card-description { display: block; width: 100%; color: rgba(0, 0, 0, .4); font: 400 12px/1.4 @font; letter-spacing: .3px; overflow: hidden; overflow-wrap: break-word; }
+@media (prefers-reduced-motion: reduce) {
+  .fc-tooltip, .fc-tooltip-card { transition: none; animation: none; translate: 0 0; }
+}
