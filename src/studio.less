@@ -72,6 +72,12 @@ body { background: #f2f2f2; }
 }
 .studio-generated-demo { display: block; margin-bottom: 7px; color: #888; font: 400 10px/15px @font; }
 .studio-generated-text { white-space: pre-wrap; overflow-wrap: anywhere; font: 400 12px/19px @font; }
+.studio-generated-text-wrap { position: relative; max-height: 114px; overflow: hidden;
+  &::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 44px; background: linear-gradient(transparent, #f1f1f1); pointer-events: none; }
+  &--expanded { max-height: none; &::after { display: none; } }
+}
+.studio .studio-generated-expand { display: inline-flex; align-items: center; gap: 3px; margin-top: 6px; color: #666; font-size: 11px; line-height: 16px; text-decoration: underline; text-underline-offset: 2px; }
+.studio .studio-generated-expand:hover { color: #333; }
 .studio-generated-image { display: block; width: 100%; max-height: 190px; object-fit: contain; border-radius: @radius-control; background: rgba(255,255,255,.65); }
 .studio-generated-loading { color: #888; font: 400 11px/18px @font; }
 .studio-assistant { display: flex; flex-direction: column; align-items: stretch; gap: 12px; color: #303030; flex: none; }
@@ -387,6 +393,11 @@ body { background: #f2f2f2; }
   .studio-supporting-modules .fc-sticker-clips { mask-size: 100% 100%; mask-position: 0 0; }
   .studio-supporting-modules .fc-character .fc-material-label, .studio-supporting-modules .fc-background .fc-material-label { font-size: 9px; padding: 1px 4px; }
   .studio-supporting-modules .fc-slot-menu { gap: 4px; padding: 0 2px; button { padding: 4px; height: 28px; gap: 2px; font-size: 9px; } }
+  .studio-supporting-modules .fc-slot-upload-wrap { gap: 2px; height: 28px; padding: 0 4px; }
+  .studio-supporting-modules .fc-slot-menu .fc-slot-upload-wrap > button:first-child { font-size: 9px; gap: 2px; }
+  .studio-supporting-modules .fc-slot-upload-wrap .fc-asset-action-icon { width: 12px; height: 12px; }
+  .studio-supporting-modules .fc-slot-menu .fc-slot-upload-wrap .fc-tooltip-help,
+  .studio-supporting-modules .fc-slot-menu .fc-slot-upload-wrap .fc-tooltip-help-icon { width: 10px; height: 10px; padding: 0; }
   .studio-supporting-modules .fc-card--collapsed { height: 57px; min-height: 57px; }
 }
 

@@ -24,7 +24,7 @@ type GenerationTask = { id: number; target: GenerationTarget; status: 'draft' | 
 type ChatMessage =
   | { kind: 'user'; id: number; text: string; attachments?: ComposerAttachment[] }
   | { kind: 'generation'; id: number; target: GenerationTarget; status: 'generating' | 'ready' | 'applied' | 'discarded'; candidate: string }
-  | { kind: 'submission'; id: number; answers: string[]; phase: 'thinking' | 'reply' | 'generating'; expanded: boolean }
+  | { kind: 'submission'; id: number; answers: string[]; phase: 'thinking' | 'reply' | 'generating' | 'done'; expanded: boolean }
 const generationNames: Record<GenerationTarget, string> = { script: '脚本内容', character: '人物形象', background: '背景场景', vehicle: '产品素材' }
 const composerTargetNames: Record<ComposerTarget, string> = { global: '全局需求', ...generationNames }
 const composerTargets: { value: ComposerTarget; label: string }[] = [
@@ -84,6 +84,8 @@ export function Studio() {
   const chatMessageId = useRef(0)
   const submissionOperation = useRef(0)
   const [informationSubmitted, setInformationSubmitted] = useState(false)
+  const [submissionGenerating, setSubmissionGenerating] = useState(false)
+  const [expandedScripts, setExpandedScripts] = useState<Set<number>>(new Set())
   const [message, setMessage] = useState('')
   const [composerPromptMode, setComposerPromptMode] = useState<ComposerPromptMode>('free')
   const [composerTarget, setComposerTarget] = useState<ComposerTarget>('global')
@@ -184,7 +186,7 @@ export function Studio() {
       if (generationOperation.current !== operation) return
       const topic = prompt.match(/主题：([^\n]+)/)?.[1]?.trim() || draft.custom[0].trim() || draft.answers[0]
       const candidate = target === 'script'
-        ? `【${draft.title || '数字人视频'}】\n今天我们聊聊${topic}。用一个贴近生活的例子，带你快速了解它的核心价值。\n接下来，我们会依次介绍应用场景、主要亮点，以及如何开始使用。\n如果你也有类似需求，欢迎留言告诉我们。`
+        ? `【${draft.title || '数字人视频'}】\n\n【开场白】\n大家好，欢迎来到我们的直播间！今天我们要聊的话题是${topic}，相信很多朋友对这个领域既好奇又困惑，今天我就用最直白的方式，帮大家彻底搞清楚。\n\n【痛点引入】\n在日常生活中，很多人都会遇到这样的问题：不知道从哪里入手，信息太多反而不知道该信什么。其实这很正常，因为这个领域发展太快，今天我们就来帮你理清思路。\n\n【核心内容】\n首先，我们来了解一下${topic}最核心的价值所在。它真正解决的是什么问题？简单来说，就是让事情变得更简单、更高效、更可靠。\n\n接下来我们看三个最重要的应用场景：第一个场景是日常使用，第二个场景是专业进阶，第三个场景是团队协作。每个场景都有它独特的优势。\n\n【产品亮点】\n说到亮点，我们重点介绍以下几点：操作简便，上手快；效果显著，反馈好；性价比高，值得投入。这三点是用户最关心的，也是我们最有信心的地方。\n\n【行动引导】\n如果你也有类似的需求，欢迎在评论区告诉我你最想了解哪个方向，我们下期专门针对大家的问题来深入讲解。记得点赞收藏，方便之后回看！`
         : demoImages[target]
       setGenerationTask({ id: operation, target, status: 'ready', candidate, prompt })
       if (target === 'script') recordScript(candidate, 'AI 生成')
@@ -324,7 +326,31 @@ export function Studio() {
     setTab('chat')
     setMessages(current => [...current, { kind: 'submission', id, answers, phase: 'thinking', expanded: false }])
     window.setTimeout(() => { if (submissionOperation.current === operation) setMessages(current => current.map(item => item.kind === 'submission' && item.id === id ? { ...item, phase: 'reply' as const } : item)) }, 800)
-    window.setTimeout(() => { if (submissionOperation.current === operation) setMessages(current => current.map(item => item.kind === 'submission' && item.id === id ? { ...item, phase: 'generating' as const } : item)) }, 1900)
+    window.setTimeout(() => {
+      if (submissionOperation.current !== operation) return
+      setMessages(current => current.map(item => item.kind === 'submission' && item.id === id ? { ...item, phase: 'generating' as const } : item))
+      setScriptPhase('generating')
+      setSubmissionGenerating(true)
+    }, 1900)
+    window.setTimeout(() => {
+      if (submissionOperation.current !== operation) return
+      const topic = draft.custom[0].trim() || draft.answers[0]
+      const candidate = `【${draft.title || '数字人视频'}】\n\n【开场白】\n大家好，欢迎来到我们的直播间！今天我们要聊的话题是${topic}，相信很多朋友对这个领域既好奇又困惑，今天我就用最直白的方式，帮大家彻底搞清楚。\n\n【痛点引入】\n在日常生活中，很多人都会遇到这样的问题：不知道从哪里入手，信息太多反而不知道该信什么。其实这很正常，因为这个领域发展太快，今天我们就来帮你理清思路。\n\n【核心内容】\n首先，我们来了解一下${topic}最核心的价值所在。它真正解决的是什么问题？简单来说，就是让事情变得更简单、更高效、更可靠。\n\n接下来我们看三个最重要的应用场景：第一个场景是日常使用，第二个场景是专业进阶，第三个场景是团队协作。每个场景都有它独特的优势。\n\n【产品亮点】\n说到亮点，我们重点介绍以下几点：操作简便，上手快；效果显著，反馈好；性价比高，值得投入。这三点是用户最关心的，也是我们最有信心的地方。\n\n【行动引导】\n如果你也有类似的需求，欢迎在评论区告诉我你最想了解哪个方向，我们下期专门针对大家的问题来深入讲解。记得点赞收藏，方便之后回看！`
+      const genId = ++chatMessageId.current
+      recordScript(candidate, 'AI 生成')
+      setPast(p => [...p.slice(-29), draft])
+      setFuture([])
+      setDraft(current => ({ ...current, script: candidate }))
+      setSaved(false)
+      setScriptEditText(candidate)
+      setScriptPhase('editing')
+      setScriptConfirmed(false)
+      setMessages(msgs => [
+        ...msgs.map(item => item.kind === 'submission' && item.id === id ? { ...item, phase: 'done' as const } : item),
+        { kind: 'generation', id: genId, target: 'script' as GenerationTarget, status: 'applied' as const, candidate }
+      ])
+      setSubmissionGenerating(false)
+    }, 3500)
   }
   const hasPreviewAssets = !!media.character && !!media.background && !imageLoading.character && !imageLoading.background && !imageLoading.vehicle
   const previewInputKey = [media.character || '', media.background || '', media.vehicle || ''].join('|')
@@ -391,8 +417,7 @@ export function Studio() {
             {m.phase === 'generating' && <div className="studio-submission-progress" role="status"><span>脚本大纲生成中</span><span className="studio-submission-spinner" aria-hidden="true"/></div>}
           </article> : <article className="studio-generated-message" key={`generation-${m.id}`} aria-label={`${generationNames[m.target]}生成内容`}>
             <div className="studio-generated-meta"><strong>{generationNames[m.target]}</strong><div className="studio-generated-actions"><span>{m.status === 'generating' ? '生成中' : m.status === 'ready' ? '待确认' : m.status === 'applied' ? '已回填' : '未使用'}</span>{m.status === 'ready' && generationTask?.id === m.id && <><button aria-label="确认回填" title="确认回填" onClick={applyGeneration}><svg viewBox="0 0 20 20" width="14" height="14" aria-hidden="true"><path d="m4.5 10 3.5 3.5 7.5-7.5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg></button><button aria-label="放弃生成结果" title="放弃生成结果" onClick={discardGeneration}><svg viewBox="0 0 20 20" width="14" height="14" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/></svg></button></>}</div></div>
-            {m.status === 'generating' ? <p className="studio-generated-loading">正在准备本地示例结果…</p> : !m.candidate ? <p className="studio-generated-loading">已取消生成</p> : <><span className="studio-generated-demo">本地示例</span>{m.target === 'script' ? <p className="studio-generated-text">{m.candidate}</p> : <img className="studio-generated-image" src={m.candidate} alt={`${generationNames[m.target]}示例预览`}/>}</>}
-            {m.target === 'script' && m.candidate && m.status !== 'generating' && <button className="studio-script-history-link" onClick={() => openScriptHistory(m.candidate)}>查看脚本历史</button>}
+            {m.status === 'generating' ? <p className="studio-generated-loading">正在准备本地示例结果…</p> : !m.candidate ? <p className="studio-generated-loading">已取消生成</p> : <>{m.target === 'script' ? <><div className={`studio-generated-text-wrap ${expandedScripts.has(m.id) ? 'studio-generated-text-wrap--expanded' : ''}`}><p className="studio-generated-text">{m.candidate}</p></div><button className="studio-generated-expand" onClick={() => setExpandedScripts(prev => { const next = new Set(prev); next.has(m.id) ? next.delete(m.id) : next.add(m.id); return next })}>{expandedScripts.has(m.id) ? '收起' : '查看更多'}</button></> : <img className="studio-generated-image" src={m.candidate} alt={`${generationNames[m.target]}示例预览`}/>}</>}
           </article>)}
         </div></div>
         <div className={`studio-composer ${generationTask?.status === 'draft' ? 'studio-composer--prompt' : ''} ${attachments.length ? 'studio-composer--attached' : ''}`}>
