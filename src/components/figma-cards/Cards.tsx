@@ -47,11 +47,11 @@ function Header({ title, badge, guide, expanded = false, actions = false, action
   </header>
 }
 
-function AssetSlot({ label, hover = false, removable = false, loading = false, image, onAction, onRemove, character = false, libraryOnly = false, allowGenerate = true }: {
-  label: string; hover?: boolean; removable?: boolean; loading?: boolean; image?: string; onAction?: (action: AssetAction) => void; onRemove?: () => void; character?: boolean; libraryOnly?: boolean; allowGenerate?: boolean
+function AssetSlot({ label, hover = false, removable = false, loading = false, image, onAction, onRemove, character = false, libraryOnly = false, allowGenerate = true, primaryAction = 'upload' }: {
+  label: string; hover?: boolean; removable?: boolean; loading?: boolean; image?: string; onAction?: (action: AssetAction) => void; onRemove?: () => void; character?: boolean; libraryOnly?: boolean; allowGenerate?: boolean; primaryAction?: AssetAction
 }) {
   return <div className={`fc-slot ${hover ? 'fc-slot--hover' : ''} ${image ? 'fc-slot--image' : ''} ${loading ? 'fc-slot--loading' : ''} ${removable ? 'fc-slot--remove-visible' : ''} ${character ? 'fc-slot--character' : ''}`} aria-busy={loading}>
-    {image ? <img className="fc-uploaded-image" src={image} alt={`${label}素材`}/> : !loading && <button className="fc-add" aria-label={`添加${label}`} onClick={() => onAction?.('upload')}><Icon name="add"/></button>}
+    {image ? <img className="fc-uploaded-image" src={image} alt={`${label}素材`}/> : !loading && <button className="fc-add" aria-label={`添加${label}`} onClick={() => onAction?.(primaryAction)}><Icon name="add"/></button>}
     <span className="fc-material-label">{label}</span>
     {!image && !loading && <div className="fc-slot-menu">
       {!libraryOnly && <span className="fc-slot-upload-wrap"><button onClick={() => onAction?.('upload')}><AssetActionIcon action="upload"/>本地上传</button><TooltipHelp text="支持 PNG、JPG、WebP、GIF 等浏览器可读取的图片格式" label={`${label}图片上传格式限制`}/></span>}
@@ -180,7 +180,7 @@ export function ScriptCard({ state = 'Default', phase, expanded: expandedProp, c
   </CardSurface>
 }
 
-export function StickerCard({ state = '默认', onStateChange, onMore, selectedSticker, onStickerChange, previewReady = false, compact = false, onUpload, loading = false }: { onUpload?: () => void; loading?: boolean; compact?: boolean; state?: StickerState; onStateChange?: (state: StickerState) => void; onMore?: () => void; selectedSticker?: string | null; onStickerChange?: (image: string | null) => void; previewReady?: boolean }) {
+export function StickerCard({ state = '默认', onStateChange, onMore, onTemplateSelect, onEditCurrent, selectedSticker, selectedTemplateIndex = null, onStickerChange, previewReady = false, compact = false, onUpload, loading = false }: { onUpload?: () => void; loading?: boolean; compact?: boolean; state?: StickerState; onStateChange?: (state: StickerState) => void; onMore?: () => void; onTemplateSelect?: (index: number) => void; onEditCurrent?: () => void; selectedSticker?: string | null; selectedTemplateIndex?: number | null; onStickerChange?: (image: string | null) => void; previewReady?: boolean }) {
   const surface = useRef<HTMLElement>(null)
   const previousWidth = useRef<number | null>(null)
   const widthAnimation = useRef<Animation | null>(null)
@@ -246,8 +246,9 @@ export function StickerCard({ state = '默认', onStateChange, onMore, selectedS
   return <CardSurface ref={surface} layout={false} className={`fc-card fc-sticker ${collapsed ? 'fc-card--collapsed' : ''}`} data-component="sticker" data-state={current}>
     <Header title="贴纸" guide={{ title: '贴纸素材', text: '贴纸适合突出画面中的重点信息。上传或选择贴纸后，合成预览并检查它的位置、大小和对人物的遮挡。', cover: assets.stickerPhone }} badge={chosenSticker ? previewReady ? '预览中' : '合成后预览' : undefined} onToggle={() => setCollapsed(!collapsed)}/>
     {!collapsed && <div className="fc-sticker-body">
-      <div className="fc-sticker-current"><AssetSlot label="当前贴纸" allowGenerate={false} libraryOnly={!onUpload} loading={loading} image={chosenSticker ?? undefined} onAction={action => action === 'upload' && onUpload ? onUpload() : onMore?.()} onRemove={() => chooseSticker(null)}/></div>
+      <div className="fc-sticker-current"><AssetSlot label="当前贴纸" primaryAction="library" allowGenerate={false} libraryOnly={!onUpload} loading={loading} image={chosenSticker ?? undefined} onAction={action => action === 'upload' && onUpload ? onUpload() : chosenSticker ? onEditCurrent?.() : onMore?.()} onRemove={() => chooseSticker(null)}/></div>
       <div className={`fc-sticker-list ${end ? 'fc-sticker-list--end' : ''}`}>
+        <span className="fc-material-label fc-sticker-recommended-label">推荐模板</span>
         <div className="fc-sticker-clips" ref={clips} tabIndex={0} aria-label="贴纸列表" onScroll={updateFromScroll} onDragStart={event => event.preventDefault()}
           onWheel={event => { const element = clips.current; if (!element || Math.abs(event.deltaX) >= Math.abs(event.deltaY)) return; const max = element.scrollWidth - element.clientWidth; if ((event.deltaY > 0 && element.scrollLeft < max) || (event.deltaY < 0 && element.scrollLeft > 0)) { event.preventDefault(); element.scrollLeft += event.deltaY } }}
           onKeyDown={event => { if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') { event.preventDefault(); scrollByCard(event.key === 'ArrowRight' ? 1 : -1) } else if (event.key === 'Home' || event.key === 'End') { event.preventDefault(); clips.current?.scrollTo({ left: event.key === 'Home' ? 0 : clips.current.scrollWidth, behavior: 'smooth' }) } }}
@@ -257,7 +258,7 @@ export function StickerCard({ state = '默认', onStateChange, onMore, selectedS
           onPointerUp={event => { drag.current = null; if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId); setTimeout(() => { dragged.current = false }, 0) }}
           onPointerCancel={() => { drag.current = null; dragged.current = false }}
           style={{ maskImage: `url(${end ? assets.stickerMaskEnd : current === '默认' ? assets.stickerMaskStart : assets.stickerMaskMiddle})` }}>
-          {Array.from({length: 10}, (_,i) => <button className="fc-sticker-item" key={i} aria-label={`选择贴纸${i+1}`} aria-pressed={chosenSticker === localSticker && chosenSticker !== null && selectedIndex === i} onClick={() => { if (!dragged.current) chooseSticker(assets.stickerPhone, i) }}><img src={assets.stickerPhone} alt="手机贴纸"/></button>)}
+          {Array.from({length: 10}, (_,i) => <button className="fc-sticker-item" key={i} aria-label={`配置贴纸模板${i+1}`} aria-pressed={onTemplateSelect ? selectedTemplateIndex === i : chosenSticker === localSticker && chosenSticker !== null && selectedIndex === i} onClick={() => { if (!dragged.current) { if (onTemplateSelect) onTemplateSelect(i); else chooseSticker(assets.stickerPhone, i) } }}><img src={assets.stickerPhone} alt="手机贴纸"/></button>)}
           <div className="fc-sticker-item fc-sticker-stack"><div className="fc-sticker-back"><img src={assets.stickerPhone} alt=""/><img src={assets.stickerBack} alt=""/></div><img className="fc-sticker-front" src={assets.stickerFront} alt="更多贴纸预览"/></div>
         </div>
         {current !== '默认' && <button className="fc-sticker-arrow fc-sticker-arrow--left" aria-label="向左滚动贴纸" onClick={() => scrollByCard(-1)}><Icon name="arrowRight"/></button>}

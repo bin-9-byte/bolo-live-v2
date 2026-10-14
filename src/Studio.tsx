@@ -42,11 +42,11 @@ const libraryImage = (file: string) => asset(`asset-library-${file}.png`)
 const demoVoices = ['清透年轻女声', '温暖叙述', '沉稳男声', '活力讲解', '专业播报', '亲切陪伴']
 type VoiceSettings = { speed: number; volume: number }
 type StickerFields = { title: string; detail: string }
-type LibrarySelection = { asset: string; voiceSettings?: VoiceSettings; stickerFields?: StickerFields }
+type LibrarySelection = { asset: string; voiceSettings?: VoiceSettings; stickerFields?: StickerFields; templateIndex?: number }
 
-function AssetLibraryContent({ kind, onClose, onConfirm, initialVoiceSettings, initialStickerFields }: { kind: MediaKind; onClose: () => void; onConfirm: (selection: LibrarySelection) => void; initialVoiceSettings: VoiceSettings; initialStickerFields: StickerFields }) {
+function AssetLibraryContent({ kind, onClose, onConfirm, initialVoiceSettings, initialStickerFields, initialSelected }: { kind: MediaKind; onClose: () => void; onConfirm: (selection: LibrarySelection) => void; initialVoiceSettings: VoiceSettings; initialStickerFields: StickerFields; initialSelected: number | null }) {
   const [category, setCategory] = useState<(typeof libraryCategories)[number]>('全部')
-  const [selected, setSelected] = useState<number | null>(null)
+  const [selected, setSelected] = useState<number | null>(initialSelected)
   const [voiceSettings, setVoiceSettings] = useState(initialVoiceSettings)
   const [playingVoice, setPlayingVoice] = useState<number | null>(null)
   const [voiceProgress, setVoiceProgress] = useState(() => demoVoices.map(() => 0))
@@ -58,7 +58,7 @@ function AssetLibraryContent({ kind, onClose, onConfirm, initialVoiceSettings, i
   const stickerValid = !isSticker || (!!stickerFields.title.trim() && (!stickerHasDetail || !!stickerFields.detail.trim()))
   const title = kind === 'character' ? '人物资产库' : kind === 'voice' ? '音色资产库' : kind === 'background' ? '背景资产库' : kind === 'vehicle' ? '产品资产库' : '贴纸资产库'
   const libraryHelp = kind === 'voice' ? '选择音色后，可调整语速与音量，并试听当前参数下的效果。' : isSticker ? '选择一个贴纸模板，再填写模板对应的主文案与补充文案。' : ''
-  const choose = (index: number) => { setSelected(index); setFieldError(false); if (isSticker) setStickerFields({ title: '', detail: '' }) }
+  const choose = (index: number) => { setSelected(index); setFieldError(false); if (isSticker && index !== selected) setStickerFields({ title: '', detail: '' }) }
   useEffect(() => {
     if (playingVoice === null) return
     const timer = window.setInterval(() => setVoiceProgress(current => current.map((progress, index) => {
@@ -97,7 +97,7 @@ function AssetLibraryContent({ kind, onClose, onConfirm, initialVoiceSettings, i
         {fieldError && !stickerValid && <p className="studio-library-field-error" role="alert">请填写当前模板的必填文案</p>}
       </>}
     </aside>}</div>
-    <footer className="studio-library-footer"><button onClick={onClose}>取消</button><button disabled={selected === null} onClick={() => { if (selected === null) return; if (!stickerValid) { setFieldError(true); return } onConfirm({ asset: kind === 'voice' ? demoVoices[selected] : libraryImage(libraryFiles[selected]), voiceSettings: kind === 'voice' ? voiceSettings : undefined, stickerFields: isSticker ? { ...stickerFields, detail: stickerHasDetail ? stickerFields.detail : '' } : undefined }) }}>确认选择</button></footer>
+    <footer className="studio-library-footer"><button onClick={onClose}>取消</button><button disabled={selected === null} onClick={() => { if (selected === null) return; if (!stickerValid) { setFieldError(true); return } onConfirm({ asset: kind === 'voice' ? demoVoices[selected] : libraryImage(libraryFiles[selected]), voiceSettings: kind === 'voice' ? voiceSettings : undefined, stickerFields: isSticker ? { ...stickerFields, detail: stickerHasDetail ? stickerFields.detail : '' } : undefined, templateIndex: isSticker ? selected : undefined }) }}>确认选择</button></footer>
   </div>
 }
 
@@ -122,6 +122,8 @@ export function Studio() {
   const [voiceState, setVoiceState] = useState<VoiceState>('默认')
   const [voiceSettings, setVoiceSettings] = useState<VoiceSettings>({ speed: 1, volume: 50 })
   const [stickerFields, setStickerFields] = useState<StickerFields>({ title: '', detail: '' })
+  const [stickerTemplateIndex, setStickerTemplateIndex] = useState<number | null>(null)
+  const [libraryInitialSelection, setLibraryInitialSelection] = useState<number | null>(null)
   const [media, setMedia] = useState<Partial<Record<MediaKind, string>>>({})
   const [stickerImage, setStickerImage] = useState<string | null>(null)
   const [imageLoading, setImageLoading] = useState<Partial<Record<MediaKind, boolean>>>({})
@@ -351,15 +353,21 @@ export function Studio() {
   }
   const action = (kind: MediaKind, intent: AssetAction) => {
     if (intent === 'upload') upload(kind)
-    else if (intent === 'library') { setLibraryTarget(kind); setDialog('library') }
+    else if (intent === 'library') { setLibraryInitialSelection(null); setLibraryTarget(kind); setDialog('library') }
     else if (kind === 'character' || kind === 'background' || kind === 'vehicle') prepareGeneration(kind)
   }
-  const confirmLibrary = ({ asset: image, voiceSettings: nextVoiceSettings, stickerFields: nextStickerFields }: LibrarySelection) => {
+  const confirmLibrary = ({ asset: image, voiceSettings: nextVoiceSettings, stickerFields: nextStickerFields, templateIndex }: LibrarySelection) => {
     if (libraryTarget === 'voice') { if (nextVoiceSettings) setVoiceSettings(nextVoiceSettings); setVoiceState('已上传'); setNotice('已选择示例音色并保存参数；试听音频尚未接入') }
-    else if (libraryTarget === 'attachment' || libraryTarget === 'sticker') { stickerOperation.current++; setImageLoading(current => ({ ...current, sticker: false })); setStickerImage(image); if (nextStickerFields) setStickerFields(nextStickerFields) }
+    else if (libraryTarget === 'attachment' || libraryTarget === 'sticker') { stickerOperation.current++; setImageLoading(current => ({ ...current, sticker: false })); setStickerImage(image); setStickerTemplateIndex(templateIndex ?? null); if (nextStickerFields) setStickerFields(nextStickerFields) }
     else { setMedia(m => ({ ...m, [libraryTarget]: image })); if (libraryTarget === 'background') setBackgroundState('已上传') }
     setSaved(false)
     setDialog(null)
+  }
+  const openStickerLibrary = (templateIndex: number | null, preserveFields = false) => {
+    setLibraryInitialSelection(templateIndex)
+    if (!preserveFields) setStickerFields({ title: '', detail: '' })
+    setLibraryTarget('attachment')
+    setDialog('library')
   }
   const send = () => { if (!message.trim() && !attachments.length) return; const prompt = message.trim(); const sentAttachments = attachments.map(item => ({ ...item })); setMessages(m => [...m, { kind: 'user', id: ++chatMessageId.current, text: prompt, attachments: sentAttachments }]); setMessage(''); setAttachments([]); const target = generationTask?.target ?? composerTarget; if (prompt && target !== 'global') beginGeneration(target, prompt); else setNotice(prompt ? '全局需求已保留；AI 对话服务尚未连接' : '附件已保留；AI 生成服务尚未连接') }
   const submit = () => {
@@ -488,8 +496,8 @@ export function Studio() {
       <section ref={studioEditor} className={`studio-editor ${expanded ? 'studio-editor--expanded' : ''}`} aria-label="创作编辑区"><div className="studio-editor-flow">
         <ScriptCard onHistory={() => scriptHistoryOpen ? setScriptHistoryOpen(false) : openScriptHistory()} historyPanel={scriptHistoryOpen ? <ScriptHistory key={historyText ?? 'latest'} initialText={historyText} versions={versions} currentText={draft.script} onUse={restoreScript} onClose={() => setScriptHistoryOpen(false)}/> : undefined} phase={scriptPhase} expanded={scriptExpanded} confirmed={scriptConfirmed} onExpandedChange={setScriptExpanded} value={draft.script} onChange={updateScriptText} onEdit={startScriptEdit} onConfirm={confirmScript} onCancel={cancelScriptEdit} onUpload={() => upload('script')} onGenerate={() => prepareGeneration('script')} onRetry={() => upload('script')} fileName={scriptFileName} error={scriptError}/>
         <div className="studio-supporting-modules">
-        <div className="studio-assets-row"><CharacterVoiceCard imageUrl={media.character} loadingImage={!!imageLoading.character} onRemoveImage={() => removeImage('character')} audioUrl={media.voice} voiceState={voiceState} onVoiceStateChange={setVoiceState} onAction={intent => action('character', intent)} onVoiceUpload={() => upload('voice')} onVoiceLibrary={() => { setLibraryTarget('voice'); setDialog('library') }}/><BackgroundCard state={backgroundState} onStateChange={setBackgroundState} imageUrl={media.background} loadingBackground={!!imageLoading.background} onRemoveBackground={() => removeImage('background')} vehicleImageUrl={media.vehicle} loadingVehicle={!!imageLoading.vehicle} onRemoveVehicle={() => removeImage('vehicle')} onAction={intent => action('background', intent)} onVehicleAction={intent => action('vehicle', intent)}/></div>
-        <StickerCard onUpload={() => upload('sticker')} loading={!!imageLoading.sticker} compact={expanded} selectedSticker={stickerImage} onStickerChange={image => { stickerOperation.current++; setImageLoading(current => ({ ...current, sticker: false })); setStickerImage(image); setSaved(false) }} previewReady={previewCurrent} onMore={() => { setLibraryTarget('attachment'); setDialog('library') }}/>
+        <div className="studio-assets-row"><CharacterVoiceCard imageUrl={media.character} loadingImage={!!imageLoading.character} onRemoveImage={() => removeImage('character')} audioUrl={media.voice} voiceState={voiceState} onVoiceStateChange={setVoiceState} onAction={intent => action('character', intent)} onVoiceUpload={() => upload('voice')} onVoiceLibrary={() => { setLibraryInitialSelection(null); setLibraryTarget('voice'); setDialog('library') }}/><BackgroundCard state={backgroundState} onStateChange={setBackgroundState} imageUrl={media.background} loadingBackground={!!imageLoading.background} onRemoveBackground={() => removeImage('background')} vehicleImageUrl={media.vehicle} loadingVehicle={!!imageLoading.vehicle} onRemoveVehicle={() => removeImage('vehicle')} onAction={intent => action('background', intent)} onVehicleAction={intent => action('vehicle', intent)}/></div>
+        <StickerCard onUpload={() => upload('sticker')} loading={!!imageLoading.sticker} compact={expanded} selectedSticker={stickerImage} selectedTemplateIndex={stickerTemplateIndex} onStickerChange={image => { stickerOperation.current++; setImageLoading(current => ({ ...current, sticker: false })); setStickerImage(image); if (!image) { setStickerTemplateIndex(null); setStickerFields({ title: '', detail: '' }) } setSaved(false) }} previewReady={previewCurrent} onTemplateSelect={index => openStickerLibrary(index)} onEditCurrent={() => openStickerLibrary(stickerTemplateIndex, true)} onMore={() => openStickerLibrary(null)}/>
         </div>
       </div></section>
       <aside className="studio-preview studio-panel" aria-label="视频预览"><div className="studio-preview-main">
@@ -505,7 +513,7 @@ export function Studio() {
     <input type="file" ref={attachmentFileInput} hidden multiple accept="image/*,.txt,.md,.pdf" onChange={readFile}/>
     {notice && <div className="studio-toast" role="status">{notice}</div>}
     <dialog ref={dialogRef} className={`studio-dialog ${dialog === 'library' ? `studio-dialog--library ${libraryTarget === 'voice' || libraryTarget === 'attachment' || libraryTarget === 'sticker' ? 'studio-dialog--library-configurable' : ''}` : ''}`} onCancel={() => setDialog(null)} onClick={e => { if (e.target === e.currentTarget) setDialog(null) }}>
-      {dialog === 'library' ? <AssetLibraryContent kind={libraryTarget} onClose={() => setDialog(null)} onConfirm={confirmLibrary} initialVoiceSettings={voiceSettings} initialStickerFields={stickerFields}/> : <><button className="studio-dialog-close" aria-label="关闭弹窗" onClick={() => setDialog(null)}>×</button><h2>{dialog === 'history' ? '项目记录' : dialog === 'publish' ? '发布视频' : '生产配置'}</h2>
+      {dialog === 'library' ? <AssetLibraryContent kind={libraryTarget} onClose={() => setDialog(null)} onConfirm={confirmLibrary} initialVoiceSettings={voiceSettings} initialStickerFields={stickerFields} initialSelected={libraryInitialSelection}/> : <><button className="studio-dialog-close" aria-label="关闭弹窗" onClick={() => setDialog(null)}>×</button><h2>{dialog === 'history' ? '项目记录' : dialog === 'publish' ? '发布视频' : '生产配置'}</h2>
       {dialog === 'history' ? <><p>当前会话有 {past.length} 次可撤销修改。</p><button onClick={() => { try { const data = JSON.parse(localStorage.getItem('pineapple-studio-draft') || 'null'); if (data && typeof data.title === 'string' && typeof data.script === 'string' && Array.isArray(data.answers) && data.answers.length === 3 && data.answers.every((v: unknown) => typeof v === 'string') && Array.isArray(data.custom) && data.custom.length === 3 && data.custom.every((v: unknown) => typeof v === 'string')) { changed(data); syncScript(data.script); setDialog(null); setNotice('已恢复本地保存的文字配置') } else setNotice('暂无本地保存记录') } catch { setNotice('无法读取保存记录') } }}>恢复本地保存</button></> : <><p>当前为本地编辑预览，视频生成与发布服务尚未连接。</p><ul><li>人物：{media.character ? '已选择' : '未选择'}</li><li>音色：{voiceState === '已上传' ? '已选择' : '未选择'}</li><li>脚本：{draft.script ? `${draft.script.length} 字` : '未填写'}</li><li>背景：{media.background ? '已选择' : '默认场景'}</li></ul><button onClick={exportDraft}>导出当前配置</button></>}</>}
     </dialog>
   </div>
