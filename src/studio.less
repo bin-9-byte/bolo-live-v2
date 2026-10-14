@@ -389,7 +389,10 @@ body { background: #f2f2f2; }
   .studio-supporting-modules .fc-progress { display: none; }
   .studio-supporting-modules .fc-voice-loading { width: auto; font-size: 10px; text-align: center; }
   .studio-supporting-modules .fc-background-body { grid-template-columns: minmax(0, 1.618fr) minmax(0, 1fr); grid-template-rows: none; padding: 8px; gap: 6px; }
-  .studio-supporting-modules .fc-product-type-menu { max-height: 100px; overflow-y: auto; }
+  .studio-supporting-modules .fc-product-type-trigger { gap: 4px; padding: 0 7px; font-size: 10px; }
+  .studio-supporting-modules .fc-product-type-chevron { width: 7px; height: 7px; margin-right: 1px; }
+  .studio-supporting-modules .fc-product-type-menu { width: max-content; min-width: 152px; max-width: min(200px, calc(100vw - 24px)); }
+  .studio-supporting-modules .fc-product-type-menu button { height: 30px; font-size: 11px; }
   .studio-supporting-modules .fc-sticker-clips { mask-size: 100% 100%; mask-position: 0 0; }
   .studio-supporting-modules .fc-character .fc-material-label, .studio-supporting-modules .fc-background .fc-material-label { font-size: 9px; padding: 1px 4px; }
   .studio-supporting-modules .fc-slot-menu { gap: 4px; padding: 0 2px; button { padding: 4px; height: 28px; gap: 2px; font-size: 9px; } }
@@ -405,6 +408,48 @@ body { background: #f2f2f2; }
 @container background-asset-slot (min-height: 116px) {
   .studio-editor--expanded .studio-supporting-modules .fc-background-body .fc-slot-menu {
     flex-direction: column;
+  }
+}
+
+// Extremely narrow product slots use a compact 2x2 action palette instead of
+// squeezing four actions into a full-width pill.
+@container background-asset-slot (max-width: 112px) {
+  .studio-assets-row .fc-product-column .fc-image-actions {
+    right: 8px;
+    bottom: 8px;
+    left: auto;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 16px));
+    grid-template-rows: repeat(2, minmax(0, 16px));
+    justify-content: center;
+    align-content: center;
+    width: 52px;
+    max-width: calc(100% - 16px);
+    height: 52px;
+    padding: 6px;
+    gap: 6px;
+    box-sizing: border-box;
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 16px;
+    background: rgba(24,24,24,.82);
+    box-shadow: 0 6px 18px rgba(0,0,0,.18);
+    backdrop-filter: blur(6px);
+    transform: translateY(3px);
+  }
+  .studio-assets-row .fc-product-column .fc-image-actions button {
+    width: 16px;
+    height: 16px;
+    flex: none;
+  }
+  .studio-assets-row .fc-product-column .fc-image-actions button::before {
+    inset: -2px;
+    border-radius: 6px;
+  }
+  .studio-assets-row .fc-product-column .fc-slot--image:hover .fc-image-actions,
+  .studio-assets-row .fc-product-column .fc-slot--image:focus-within .fc-image-actions,
+  .studio-assets-row .fc-product-column .fc-slot--image.fc-slot--hover .fc-image-actions,
+  .studio-assets-row .fc-product-column .fc-slot--remove-visible .fc-image-actions {
+    transform: translateY(0);
   }
 }
 

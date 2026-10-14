@@ -16,6 +16,7 @@ export const SCRIPT_MAX_LENGTH = 10000
 export type StickerState = '默认' | '左右滚动中间态' | '左右滚动最右态'
 export type AssetAction = 'upload' | 'library' | 'generate'
 const assetActionIcons = { upload: 'upload', generate: 'magic', library: 'files' } as const
+const productIndustries = ['快消零售', '汽车交通', '消费电子', '互联网科技', '教育培训', '医疗健康', '金融保险', '房产家居', '文旅餐饮', '企业服务', '其他行业']
 
 function AssetActionIcon({ action }: { action: AssetAction }) {
   return <Icon name={assetActionIcons[action]} className="fc-asset-action-icon"/>
@@ -81,6 +82,7 @@ export function BackgroundCard({ state = '默认', onStateChange, imageUrl, vehi
   const [collapsed, setCollapsed] = useState(false)
   const [productType, setProductType] = useState('')
   const [productTypeOpen, setProductTypeOpen] = useState(false)
+  const selectedProductIndustry = productIndustries.includes(productType) ? productType : ''
   const uploaded = state === '已上传' || state === '删除上传图片'
   return <CardSurface className={`fc-card fc-background ${collapsed ? 'fc-card--collapsed' : ''}`} data-component="background" data-state={state}>
     <Header title="背景场景" guide={{ title: '背景场景', text: '上传与人物风格一致的清晰场景图片；如果需要展示商品，可在产品区域补充素材，并检查画面中的主体是否清楚。', cover: assets.room }} toggleLabel={`${collapsed ? '展开' : '收起'}背景场景`} onToggle={() => setCollapsed(!collapsed)}/>
@@ -89,11 +91,11 @@ export function BackgroundCard({ state = '默认', onStateChange, imageUrl, vehi
       <div className={`fc-product-column ${vehicleImageUrl ? 'fc-product-column--filled' : ''}`}>
         <AssetSlot label="产品" image={vehicleImageUrl} loading={loadingVehicle} onAction={onVehicleAction} onRemove={onRemoveVehicle}/>
         {vehicleImageUrl && <div className="fc-product-type-control" onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setProductTypeOpen(false) }}>
-          <button type="button" className={`fc-product-type-trigger ${productType ? 'fc-product-type-trigger--selected' : ''} ${productTypeOpen ? 'fc-product-type-trigger--open' : ''}`} aria-label="产品类型" aria-haspopup="listbox" aria-expanded={productTypeOpen} onClick={() => setProductTypeOpen(!productTypeOpen)}>
-            <span>{productType || (productTypeOpen ? '产品类型' : '请选择产品类型')}</span><span className="fc-product-type-chevron" aria-hidden="true"/>
+          <button type="button" className={`fc-product-type-trigger ${selectedProductIndustry ? 'fc-product-type-trigger--selected' : ''} ${productTypeOpen ? 'fc-product-type-trigger--open' : ''}`} aria-label="产品行业" aria-haspopup="listbox" aria-expanded={productTypeOpen} onClick={() => setProductTypeOpen(!productTypeOpen)}>
+            <span>{selectedProductIndustry || '产品行业'}</span><span className="fc-product-type-chevron" aria-hidden="true"/>
           </button>
-          {productTypeOpen && <div className="fc-product-type-menu" role="listbox" aria-label="产品类型">
-            {['服饰鞋包', '美妆个护', '食品饮料', '家居日用', '数码家电', '其他商品'].map(type => <button type="button" key={type} role="option" aria-selected={productType === type} onClick={() => { setProductType(type); setProductTypeOpen(false) }}><span className="fc-product-type-radio" aria-hidden="true">{productType === type && <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M0.728516 5.46677L3.98309 8.72135C4.21557 8.95382 4.60528 8.90251 4.76966 8.61779L9.27379 0.816406" stroke="black" strokeWidth="1.2" strokeLinecap="round"/></svg>}</span>{type}</button>)}
+          {productTypeOpen && <div className="fc-product-type-menu" role="listbox" aria-label="产品行业">
+            {['', ...productIndustries].map(type => <button type="button" className={!type ? 'fc-product-type-option--empty' : undefined} key={type || 'none'} role="option" aria-selected={selectedProductIndustry === type} onClick={() => { setProductType(type); setProductTypeOpen(false) }}>{type || '暂不选择'}<span className="fc-product-type-check" aria-hidden="true">{selectedProductIndustry === type ? '✓' : ''}</span></button>)}
           </div>}
         </div>}
       </div>
