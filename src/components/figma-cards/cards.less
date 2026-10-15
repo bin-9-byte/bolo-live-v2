@@ -147,9 +147,14 @@
   .fc-asset-action-bar:is([data-count='3'], [data-count='5']) button:last-child { grid-column: 1 / -1; justify-self: center; }
   .fc-slot--image:hover .fc-asset-action-bar, .fc-slot--image:focus-within .fc-asset-action-bar, .fc-slot--image.fc-slot--hover .fc-asset-action-bar, .fc-slot--remove-visible .fc-asset-action-bar { transform: translate(-50%, 0); }
 }
-.fc-card .fc-voice-actions { top: 50%; right: 8px; bottom: auto; left: auto; transform: translate(3px, -50%); }
+.fc-card .fc-voice-actions { top: auto; right: auto; bottom: 8px; left: 50%; transform: translate(-50%, 3px); }
 .fc-voice[data-state='已上传']:hover .fc-voice-actions,
-.fc-voice[data-state='已上传']:focus-within .fc-voice-actions { transform: translate(0, -50%); }
+.fc-voice[data-state='已上传']:focus-within .fc-voice-actions { transform: translate(-50%, 0); }
+@container voice-slot (min-aspect-ratio: 3 / 2) {
+  .fc-card .fc-voice-actions { top: 50%; right: 8px; bottom: auto; left: auto; transform: translate(3px, -50%); }
+  .fc-voice[data-state='已上传']:hover .fc-voice-actions,
+  .fc-voice[data-state='已上传']:focus-within .fc-voice-actions { transform: translate(0, -50%); }
+}
 @media (prefers-reduced-motion: reduce) { .fc-asset-action-bar { transition: none; } }
 .fc-slot-loading { position: absolute; inset: 0; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; border-radius: inherit; background: rgba(247,247,247,.88); color: rgba(0,0,0,.6); font-weight: 500; line-height: 18px; }
 .fc-slot-spinner { width: 20px; height: 20px; border: 2px solid rgba(0,0,0,.14); border-top-color: rgba(0,0,0,.7); border-radius: 50%; animation: fc-slot-spin 750ms linear infinite; }
