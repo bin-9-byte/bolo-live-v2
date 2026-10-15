@@ -69,7 +69,7 @@
 .fc-product-column { display: flex; flex-direction: column; gap: 8px; min-height: 0;
   > .fc-slot { width: 100%; flex: 1; }
 }
-.fc-slot { position: relative; min-width: 0; min-height: 0; border: .5px solid rgba(0,0,0,.02); background: rgba(0,0,0,.02); border-radius: @radius-content; display: flex; align-items: center; justify-content: center;
+.fc-slot { position: relative; min-width: 0; min-height: 0; border: .5px solid rgba(0,0,0,.02); background: rgba(0,0,0,.02); border-radius: @radius-content; display: flex; align-items: center; justify-content: center; container-type: inline-size;
   transition: background-color 200ms ease, box-shadow 200ms ease;
   .fc-add { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; border-radius: inherit; transition: opacity 160ms ease; }
   &--hover, &:hover, &:focus-within { &:not(.fc-slot--image):not(.fc-slot--loading) { background: rgba(0,0,0,.06); .fc-add { opacity: 0; pointer-events: none; } .fc-slot-menu { opacity: 1; visibility: visible; pointer-events: auto; transform: translate(-50%, -50%); } } }
@@ -78,6 +78,8 @@
 }
 .fc-uploaded-image { display: block; width: auto; height: auto; max-width: 100%; max-height: 100%; object-fit: contain; border-radius: @radius-sm; }
 .fc-material-label { position: absolute; z-index: 2; top: 5.5px; left: 5.5px; height: 16px; padding: 1px 6px; background: rgba(38,38,38,.9); border-radius: @radius-pill; color: #fff; font-size: 10px; font-weight: 500; line-height: 15px; pointer-events: none; }
+.fc-slot > .fc-tooltip-help.fc-tooltip-help--card { position: absolute; z-index: 3; top: 5.5px; right: 5.5px; width: 16px; height: 16px; margin: 0; color: rgba(0,0,0,.55); }
+.fc-slot > .fc-tooltip-help .fc-tooltip-help-icon { width: 12px; height: 12px; }
 .fc-product-type-control { position: relative; display: flex; width: 100%; height: 32px; flex: none; }
 .fc-card .fc-product-type-trigger { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; height: 32px; padding: 0 10px; border: 1px solid #ededed; border-radius: @radius-control; background: #fff; color: #848684; font-size: 11px; line-height: 16px; transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease; }
 .fc-product-type-trigger > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -100,35 +102,55 @@
 .fc-slot-menu { position: absolute; top: 50%; left: 50%; display: flex; width: min(96px, calc(100% - 16px)); transform: translate(-50%, -48%); flex-direction: column; align-items: stretch; gap: 8px; padding: 0; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 170ms ease, transform 180ms ease, visibility 170ms;
   button { display: flex; align-items: center; justify-content: center; gap: 5px; width: 100%; height: 36px; padding: 7px 10px; min-width: 0; border: 1px solid white; border-radius: @radius-control; background: @card; font-weight: 500; line-height: 1.4; white-space: nowrap; }
 }
-.fc-slot-upload-wrap { display: flex; align-items: center; justify-content: center; gap: 5px; width: 100%; height: 36px; padding: 0 8px; border: 1px solid white; border-radius: @radius-control; background: @card; box-sizing: border-box; white-space: nowrap; transition: background-color 180ms ease; }
-.fc-slot-menu .fc-slot-upload-wrap > button:first-child { flex: none; display: flex; align-items: center; gap: 5px; width: auto; min-width: 0; height: auto; padding: 0; border: 0; border-radius: 0; background: transparent; }
-.fc-slot-menu .fc-slot-upload-wrap .fc-tooltip-help { flex: none; width: 14px; height: 14px; min-width: 0; padding: 0; border: 0; background: transparent; box-shadow: none; }
-.fc-slot-menu .fc-slot-upload-wrap .fc-tooltip-help:hover, .fc-slot-menu .fc-slot-upload-wrap .fc-tooltip-help:focus-visible { background: transparent; box-shadow: none; }
+.fc-slot-upload-wrap { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; height: 36px; padding: 0 8px; border: 1px solid white; border-radius: @radius-control; background: @card; box-sizing: border-box; white-space: nowrap; transition: background-color 180ms ease; }
+.fc-upload-action > button:first-child { position: absolute; z-index: 1; inset: 0; width: 100%; min-width: 0; height: 100%; padding: 0; border: 0; border-radius: inherit; background: transparent; }
+.fc-upload-action-content { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: 0; line-height: 18px; pointer-events: none; }
+.fc-upload-action-copy { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-width: 0; }
+.fc-upload-action-content .fc-asset-action-icon { width: 16px; height: 16px; }
+.fc-upload-action-content .fc-asset-action-icon img { width: 16px; height: 16px; }
+.fc-upload-action .fc-tooltip-help { position: relative; z-index: 2; width: 14px; height: 14px; min-width: 14px; padding: 0; border: 0; background: transparent; box-shadow: none; pointer-events: auto; }
+.fc-upload-action .fc-tooltip-help-icon { transform: translateY(-.5px); }
+.fc-upload-action .fc-tooltip-help:hover, .fc-upload-action .fc-tooltip-help:focus-visible { background: transparent; box-shadow: none; }
 .fc-slot-upload-wrap:hover, .fc-slot-upload-wrap:focus-within { background: rgba(255,255,255,.67); }
-.fc-slot-menu .fc-slot-upload-wrap > button:first-child:hover, .fc-slot-menu .fc-slot-upload-wrap > button:first-child:focus-visible { background: transparent; }
+.fc-upload-action > button:first-child:hover, .fc-upload-action > button:first-child:focus-visible { background: transparent; }
 .fc-slot .fc-asset-action-icon {
   width: 16px; height: 16px;
   img { width: 100%; height: 100%; object-fit: contain; transform: none; }
 }
-.fc-card .fc-image-actions {
-  position: absolute; z-index: 2; left: 50%; bottom: 8px;
-  display: grid; grid-auto-flow: column; grid-auto-columns: 14px; align-items: center; justify-content: center;
-  max-width: calc(100% - 8px); height: 30px; padding: 8px 7px; column-gap: 6px; box-sizing: border-box;
+.fc-card .fc-asset-action-bar {
+  position: absolute; z-index: 2; right: auto; bottom: 8px; left: 50%;
+  display: grid; grid-auto-flow: column; grid-auto-columns: 16px; align-items: center; justify-content: center;
+  width: max-content; max-width: calc(100% - 16px); height: 34px; padding: 9px 8px; column-gap: 7px; box-sizing: border-box;
   background: rgba(0,0,0,.8); backdrop-filter: blur(2px); border-radius: 16px;
   opacity: 0; visibility: hidden; pointer-events: none; transform: translate(-50%, 3px);
   transition: opacity 160ms ease, transform 160ms ease, visibility 160ms;
-  button { position: relative; display: flex; align-items: center; justify-content: center; flex: 0 0 14px; width: 14px; height: 14px; color: #fff; border-radius: 4px; }
-  button::before { content: ''; position: absolute; inset: -7px; border-radius: 8px; }
+  button { position: relative; display: flex; align-items: center; justify-content: center; flex: 0 0 16px; width: 16px; height: 16px; color: #fff; border-radius: 5px; }
+  button::before { content: ''; position: absolute; inset: -5px; border-radius: 8px; }
   button:hover, button:focus-visible { color: #fff; background: rgba(255,255,255,.15); }
-  svg { width: 14px; height: 14px; flex: none; }
-  .fc-icon { width: 14px; height: 14px; }
-  .fc-icon img { width: 14px; height: 14px; transform: none; filter: brightness(0) invert(1); }
-  .fc-icon--editPencil, .fc-icon--editPencil img { width: 14px; height: 14px; }
+  svg { width: 16px; height: 16px; flex: none; }
+  .fc-icon { width: 16px; height: 16px; }
+  .fc-icon img { width: 16px; height: 16px; transform: none; filter: brightness(0) invert(1); }
+  .fc-icon--editPencil { width: 16px; height: 16px; background: currentColor; mask: url('/figma-components/edit-pencil.svg') center / contain no-repeat; }
+  .fc-icon--editPencil img { display: none; }
 }
 .fc-slot--image:hover, .fc-slot--image:focus-within, .fc-slot--image.fc-slot--hover, .fc-slot--remove-visible {
-  .fc-image-actions { opacity: 1; visibility: visible; pointer-events: auto; transform: translate(-50%, 0); }
+  .fc-asset-action-bar { opacity: 1; visibility: visible; pointer-events: auto; transform: translate(-50%, 0); }
 }
-@media (prefers-reduced-motion: reduce) { .fc-image-actions { transition: none; } }
+.fc-voice[data-state='已上传']:hover .fc-voice-actions,
+.fc-voice[data-state='已上传']:focus-within .fc-voice-actions { opacity: 1; visibility: visible; pointer-events: auto; }
+@container (max-width: 88px) {
+  .fc-asset-action-bar:is([data-count='3'], [data-count='4'], [data-count='5']) { right: auto; bottom: 8px; left: 50%; grid-auto-flow: row; grid-template-columns: repeat(2, 14px); grid-auto-rows: 14px; width: 48px; height: auto; padding: 6px; gap: 8px; border-radius: 14px; transform: translate(-50%, 3px);
+    button { width: 14px; height: 14px; }
+    button::before { inset: -4px; }
+    svg, .fc-icon, .fc-icon img, .fc-icon--editPencil { width: 14px; height: 14px; }
+  }
+  .fc-asset-action-bar:is([data-count='3'], [data-count='5']) button:last-child { grid-column: 1 / -1; justify-self: center; }
+  .fc-slot--image:hover .fc-asset-action-bar, .fc-slot--image:focus-within .fc-asset-action-bar, .fc-slot--image.fc-slot--hover .fc-asset-action-bar, .fc-slot--remove-visible .fc-asset-action-bar { transform: translate(-50%, 0); }
+}
+.fc-card .fc-voice-actions { top: 50%; right: 8px; bottom: auto; left: auto; transform: translate(3px, -50%); }
+.fc-voice[data-state='已上传']:hover .fc-voice-actions,
+.fc-voice[data-state='已上传']:focus-within .fc-voice-actions { transform: translate(0, -50%); }
+@media (prefers-reduced-motion: reduce) { .fc-asset-action-bar { transition: none; } }
 .fc-slot-loading { position: absolute; inset: 0; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; border-radius: inherit; background: rgba(247,247,247,.88); color: rgba(0,0,0,.6); font-weight: 500; line-height: 18px; }
 .fc-slot-spinner { width: 20px; height: 20px; border: 2px solid rgba(0,0,0,.14); border-top-color: rgba(0,0,0,.7); border-radius: 50%; animation: fc-slot-spin 750ms linear infinite; }
 @keyframes fc-slot-spin { to { transform: rotate(360deg); } }
@@ -138,40 +160,43 @@
   > .fc-slot { height: 237px; width: 241px; flex: none; }
 }
 .fc-card--collapsed { height: auto; .fc-header { border-bottom: 0; } }
-.fc-voice { position: relative; width: 241px; height: 92px; padding: 8px 4px 4px; display: flex; flex-direction: column; gap: 6px; border-radius: @radius-group; background: rgba(72,72,73,.08); flex: none; }
-.fc-voice-heading { display: flex; align-items: center; justify-content: space-between; gap: 4px; width: 100%; height: 16px; flex: none; }
-.fc-voice-label { position: static; align-self: flex-start; flex: none; margin-left: 4px; }
-.fc-voice-heading .fc-tooltip-help.fc-tooltip-help--card { width: 16px; height: 16px; margin-right: 4px; color: rgba(0, 0, 0, .55); }
-.fc-voice-heading .fc-tooltip-help-icon { width: 12px; height: 12px; }
-.fc-voice-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px; height: 58px;
-  button { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 12px; min-width: 0; flex: 1; background: @card; border-radius: @radius-content @radius-xs @radius-xs @radius-content; color: @secondary; font-weight: 500; line-height: 18px; letter-spacing: .0804px; }
-  button + button { border-radius: @radius-xs @radius-content @radius-content @radius-xs; }
-  .fc-voice-upload-action { position: relative; display: grid; grid-template-columns: 14px minmax(0, 1fr) 14px; align-items: center; column-gap: 4px; min-width: 0; padding: 0 8px; border-radius: @radius-content @radius-xs @radius-xs @radius-content; background: @card; box-sizing: border-box; }
-  .fc-voice-upload-action::before { content: ''; width: 14px; height: 14px; }
-  .fc-voice-upload-action > button:first-child { position: static; display: flex; width: 100%; height: 100%; padding: 0; gap: 8px; background: transparent; border-radius: 0; }
-  .fc-voice-upload-action + button { border-radius: @radius-xs @radius-content @radius-content @radius-xs; }
-  .fc-voice-upload-action .fc-tooltip-help { position: static; z-index: 1; width: 14px; height: 14px; padding: 0; background: transparent; border-radius: 50%; transform: none; }
-  .fc-voice-upload-action .fc-tooltip-help-icon { width: 12px; height: 12px; }
-  .fc-voice-upload-action:hover, .fc-voice-upload-action:focus-within { background: rgba(255,255,255,.95); }
-  .fc-voice-upload-action > button:first-child:hover, .fc-voice-upload-action > button:first-child:focus-visible { background: transparent; box-shadow: none; }
-  .fc-voice-upload-action .fc-tooltip-help:hover, .fc-voice-upload-action .fc-tooltip-help:focus-visible { background: transparent; box-shadow: none; }
+.fc-voice { position: relative; width: 241px; height: 92px; padding: 0; display: block; border: .5px solid rgba(0,0,0,.02); border-radius: @radius-content; background: rgba(0,0,0,.02); flex: none; container: voice-slot / size; }
+.fc-voice-label { z-index: 3; }
+.fc-voice > .fc-tooltip-help.fc-tooltip-help--card { position: absolute; z-index: 3; top: 5.5px; right: 5.5px; width: 16px; height: 16px; margin: 0; color: rgba(0, 0, 0, .55); }
+.fc-voice > .fc-tooltip-help .fc-tooltip-help-icon { width: 12px; height: 12px; }
+.fc-voice[data-state='上传中'], .fc-voice[data-state='已上传'] { padding: 0; }
+.fc-voice[data-state='上传中'] .fc-voice-content,
+.fc-voice[data-state='已上传'] .fc-voice-content { position: absolute; top: 30px; right: 4px; bottom: 4px; left: 4px; width: auto; height: auto; }
+.fc-voice-empty-state { position: relative; width: 100%; height: 100%; min-height: 0; border-radius: @radius-content; }
+.fc-voice-add { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; border-radius: inherit; background: transparent; transition: opacity 160ms ease, background-color 180ms ease;
+  .fc-icon { width: 20px; height: 20px; opacity: .62; }
+  .fc-icon img { width: 20px; height: 20px; }
 }
-.fc-voice-content { height: 58px; border-radius: @radius-content; background: @card; display: flex; align-items: center; gap: 12px; padding: 0 28px 0 12px; position: relative;
+.fc-voice-options { position: absolute; top: 50%; left: 50%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; width: min(200px, calc(100% - 16px)); height: 36px; opacity: 0; visibility: hidden; pointer-events: none; transform: translate(-50%, calc(-50% + 2px)); transition: opacity 170ms ease, transform 180ms ease, visibility 170ms;
+  button { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 12px; min-width: 0; flex: 1; border: 1px solid white; border-radius: @radius-control; background: @card; color: @secondary; font-weight: 500; line-height: 18px; letter-spacing: .0804px; }
+  > button { padding: 0 12px; }
+  > button .fc-asset-action-icon { width: 16px; height: 16px; }
+  > button .fc-asset-action-icon img { width: 16px; height: 16px; }
+  .fc-upload-action { min-width: 0; }
+  .fc-upload-action > button:first-child { width: 100%; height: 100%; padding: 0; border: 0; background: transparent; border-radius: inherit; }
+  button:focus-visible { outline: 0; outline-offset: 0; }
+}
+.fc-voice:hover, .fc-voice:focus-within {
+  .fc-voice-add { opacity: 0; pointer-events: none; }
+  .fc-voice-options { opacity: 1; visibility: visible; pointer-events: auto; transform: translate(-50%, -50%); }
+}
+@container voice-slot (min-height: 116px) {
+  .fc-voice-options { grid-template-columns: minmax(0, 1fr); grid-template-rows: repeat(2, 36px); width: min(96px, calc(100% - 16px)); height: 80px; }
+  .fc-voice .fc-voice-content { flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 8px; }
+  .fc-voice .fc-voice-content .fc-voice-track { flex: none; width: 100%; text-align: center; }
+}
+.fc-voice-content { width: 100%; height: 100%; border-radius: @radius-content; background: @card; display: flex; align-items: center; gap: 12px; padding: 0 28px 0 12px; position: relative;
   &--loading { gap: 16px; justify-content: center; padding: 0; }
   .fc-voice-avatar { width: 32px; height: 32px; border-radius: 50%; background: rgba(72,72,73,.08); display: flex; flex: none; align-items: center; justify-content: center; }
-  .fc-voice-close { position: absolute; top: 8px; right: 8px; padding: 4px; border-radius: 50%; background: rgba(72,72,73,.04); display: flex; }
-  .fc-voice-close .fc-icon--delete { width: 10px; height: 10px; background: #e5484d; mask: url('/figma-components/delete.svg') center / contain no-repeat; }
-  .fc-voice-close .fc-icon--delete img { display: none; }
 }
 .fc-voice-loading { width: 120px; font-weight: 500; line-height: 18px; }
 .fc-voice-track { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;
   > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 18px; letter-spacing: .0804px; }
-}
-.fc-progress { height: 12px; padding: 4px 0; position: relative;
-  &::before { content: ''; position: absolute; height: 3px; left: 0; right: 0; top: 4px; background: rgba(0,0,0,.05); border-radius: 2px; }
-  .fc-progress-fill { position: absolute; top: 4px; height: 3px; background: #000; border-radius: @radius-pill; }
-  .fc-progress-thumb { position: absolute; top: .5px; transform: translateX(-2px); }
-  input { position: absolute; inset: -4px 0; margin: 0; width: 100%; opacity: 0; cursor: pointer; }
 }
 .fc-audio-message { position: absolute; left: 0; top: calc(100% + 6px); font-size: 11px; color: #89571a; white-space: nowrap; }
 .fc-pause { font-size: 12px; font-weight: 700; }
@@ -248,7 +273,9 @@
   > .fc-slot { width: 100%; height: 100%; }
   .fc-slot-menu { gap: 6px; padding: 0 4px; button { padding: 5px 7px; height: 30px; font-size: 10px; } }
   .fc-slot-upload-wrap { gap: 3px; height: 30px; padding: 0 5px; }
-  .fc-slot-menu .fc-slot-upload-wrap > button:first-child { height: auto; padding: 0; gap: 3px; font-size: 10px; }
+  .fc-slot-menu .fc-slot-upload-wrap > button:first-child { height: 100%; padding: 0; }
+  .fc-slot-menu .fc-upload-action-content { gap: 3px; font-size: 10px; }
+  .fc-slot-menu .fc-upload-action-copy { gap: 3px; }
   .fc-slot-upload-wrap .fc-asset-action-icon { width: 14px; height: 14px; }
   .fc-slot-menu .fc-slot-upload-wrap .fc-tooltip-help, .fc-slot-menu .fc-slot-upload-wrap .fc-tooltip-help-icon { width: 12px; height: 12px; padding: 0; }
 }
@@ -281,8 +308,7 @@
 .fc-card .fc-round:hover, .fc-card .fc-round:focus-visible { background: rgba(0,0,0,.05); border-color: rgba(0,0,0,.08); }
 .fc-slot-menu button { transition: background-color 180ms ease; }
 .fc-slot-menu button:hover, .fc-slot-menu button:focus-visible { background: rgba(255,255,255,.67); }
-.fc-voice-options button:hover, .fc-voice-options button:focus-visible { background: rgba(255,255,255,.95); box-shadow: inset 0 0 0 1px rgba(0,0,0,.07); }
-.fc-voice-content .fc-voice-close:hover, .fc-voice-content .fc-voice-close:focus-visible { background: rgba(72,72,73,.14); }
+.fc-voice-options button:hover, .fc-voice-options button:focus-visible { background: rgba(255,255,255,.95); box-shadow: none; }
 .fc-voice-content .fc-voice-avatar:hover, .fc-voice-content .fc-voice-avatar:focus-visible { background: rgba(72,72,73,.16); }
 .fc-card button.fc-sticker-item:hover, .fc-card button.fc-sticker-item:focus-visible { background: rgba(0,0,0,.05); }
 .fc-card button.fc-sticker-item[aria-pressed='true']::after { content: ''; position: absolute; inset: 1px; border: 1.5px solid #262626; border-radius: 15px; pointer-events: none; }

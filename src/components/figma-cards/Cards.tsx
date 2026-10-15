@@ -15,11 +15,33 @@ export type ScriptPhase = 'empty' | 'generating' | 'ready' | 'editing' | 'upload
 export const SCRIPT_MAX_LENGTH = 10000
 export type StickerState = '默认' | '左右滚动中间态' | '左右滚动最右态'
 export type AssetAction = 'upload' | 'library' | 'generate'
+type AssetToolbarAction = AssetAction | 'edit' | 'delete'
+type AssetToolbarItem = { action: AssetToolbarAction; label: string; tooltip: string; onClick?: () => void }
 const assetActionIcons = { upload: 'upload', generate: 'magic', library: 'files' } as const
 const productIndustries = ['快消零售', '汽车交通', '消费电子', '互联网科技', '教育培训', '医疗健康', '金融保险', '房产家居', '文旅餐饮', '企业服务', '其他行业']
 
 function AssetActionIcon({ action }: { action: AssetAction }) {
   return <Icon name={assetActionIcons[action]} className="fc-asset-action-icon"/>
+}
+
+function AssetActionBar({ label, actions, className = '' }: { label: string; actions: AssetToolbarItem[]; className?: string }) {
+  return <div className={`fc-asset-action-bar ${className}`} data-count={actions.length} role="group" aria-label={label}>
+    {actions.map(item => <TooltipButton key={item.action} label={item.label} text={item.tooltip} onClick={item.onClick}>
+      {item.action === 'edit' ? <Icon name="editPencil"/> : item.action === 'delete' ?
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h18M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M5 6l1 14a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1l1-14M10 10v7m4-7v7"/></svg> :
+        <AssetActionIcon action={item.action}/>}
+    </TooltipButton>)}
+  </div>
+}
+
+function UploadActionButton({ tooltip, onClick }: { tooltip: string; onClick?: () => void }) {
+  return <span className="fc-slot-upload-wrap fc-upload-action">
+    <button type="button" aria-label="上传" onClick={onClick}/>
+    <span className="fc-upload-action-content">
+      <AssetActionIcon action="upload"/>
+      <span className="fc-upload-action-copy"><span aria-hidden="true">上传</span><TooltipHelp text={tooltip} label="上传格式限制"/></span>
+    </span>
+  </span>
 }
 
 function CardSurface(props: HTMLMotionProps<'section'>) {
@@ -36,8 +58,7 @@ function Header({ title, badge, guide, expanded = false, actions = false, action
   title: string; badge?: string; guide?: TooltipGuide; expanded?: boolean; actions?: boolean; actionsDisabled?: boolean; onAction?: (action: AssetAction | 'edit') => void; onToggle?: () => void; toggleLabel?: string
 }) {
   return <header className={`fc-header ${guide ? 'fc-header--with-help' : ''}`}>
-    {!guide && <button className="fc-collapse" aria-label={toggleLabel ?? `切换${title}`} onClick={onToggle}><Icon name="panel"/></button>}
-    <div className="fc-heading">{guide && onToggle ? <button className="fc-heading-toggle" aria-label={toggleLabel ?? `切换${title}`} onClick={onToggle}><h2>{title}</h2></button> : <h2>{title}</h2>}{guide && <TooltipHelp text={guide.text} label={`${title}创作指南`} guide={guide}/>} {badge && <span className="fc-confirmed-tag">{badge}</span>}</div>
+    <div className="fc-heading">{onToggle ? <button className="fc-heading-toggle" aria-label={toggleLabel ?? `切换${title}`} onClick={onToggle}><h2>{title}</h2></button> : <h2>{title}</h2>}{guide && <TooltipHelp text={guide.text} label={`${title}创作指南`} guide={guide}/>} {badge && <span className="fc-confirmed-tag">{badge}</span>}</div>
     {actions && <div className="fc-actions">
       {onHistory && <TooltipButton className="fc-round" label="脚本历史" text="查看脚本历史" onClick={onHistory}><Icon name="history"/></TooltipButton>}
       <TooltipButton className="fc-round" label={`上传${title}`} text="上传脚本文件" disabled={actionsDisabled} onClick={() => onAction?.('upload')}><Icon name="upload"/></TooltipButton>
@@ -47,35 +68,27 @@ function Header({ title, badge, guide, expanded = false, actions = false, action
   </header>
 }
 
-function AssetSlot({ label, hover = false, removable = false, loading = false, image, onAction, onEdit, onRemove, character = false, libraryOnly = false, allowGenerate = true, primaryAction = 'upload' }: {
-  label: string; hover?: boolean; removable?: boolean; loading?: boolean; image?: string; onAction?: (action: AssetAction) => void; onEdit?: () => void; onRemove?: () => void; character?: boolean; libraryOnly?: boolean; allowGenerate?: boolean; primaryAction?: AssetAction
+function AssetSlot({ label, guide, hover = false, removable = false, loading = false, image, onAction, onEdit, onRemove, character = false, libraryOnly = false, allowGenerate = true, primaryAction = 'upload' }: {
+  label: string; guide?: TooltipGuide; hover?: boolean; removable?: boolean; loading?: boolean; image?: string; onAction?: (action: AssetAction) => void; onEdit?: () => void; onRemove?: () => void; character?: boolean; libraryOnly?: boolean; allowGenerate?: boolean; primaryAction?: AssetAction
 }) {
+  const toolbarActions: AssetToolbarItem[] = [
+    ...(!libraryOnly ? [{ action: 'upload' as const, label: `替换${label}`, tooltip: '替换', onClick: () => onAction?.('upload') }] : []),
+    ...(!libraryOnly && allowGenerate ? [{ action: 'generate' as const, label: `AI生成${label}`, tooltip: 'AI 生成', onClick: () => onAction?.('generate') }] : []),
+    ...(onEdit ? [{ action: 'edit' as const, label: `重新编辑${label}文案`, tooltip: '重新编辑', onClick: onEdit }] : []),
+    { action: 'library', label: `打开${label}资产库`, tooltip: '资产库', onClick: () => onAction?.('library') },
+    ...(onRemove ? [{ action: 'delete' as const, label: `删除${label}图片`, tooltip: '删除', onClick: onRemove }] : []),
+  ]
   return <div className={`fc-slot ${hover ? 'fc-slot--hover' : ''} ${image ? 'fc-slot--image' : ''} ${loading ? 'fc-slot--loading' : ''} ${removable ? 'fc-slot--remove-visible' : ''} ${character ? 'fc-slot--character' : ''}`} aria-busy={loading}>
     {image ? <img className="fc-uploaded-image" src={image} alt={`${label}素材`}/> : !loading && <button className="fc-add" aria-label={`添加${label}`} onClick={() => onAction?.(primaryAction)}><Icon name="add"/></button>}
     <span className="fc-material-label">{label}</span>
+    {guide && <TooltipHelp text={guide.text} label={`${label}创作指南`} guide={guide}/>}
     {!image && !loading && <div className="fc-slot-menu">
-      {!libraryOnly && <span className="fc-slot-upload-wrap"><button type="button" aria-label={`上传${label}图片`} onClick={() => onAction?.('upload')}><AssetActionIcon action="upload"/>上传</button><TooltipHelp text="支持 PNG、JPG、WebP、GIF 等浏览器可读取的图片格式" label={`${label}图片上传格式限制`}/></span>}
+      {!libraryOnly && <UploadActionButton tooltip="支持 PNG、JPG、WebP、GIF 等浏览器可读取的图片格式" onClick={() => onAction?.('upload')}/>}
       {!libraryOnly && allowGenerate && <button onClick={() => onAction?.('generate')}><AssetActionIcon action="generate"/>AI生成</button>}
       <button onClick={() => onAction?.('library')}><AssetActionIcon action="library"/>资产库</button>
     </div>}
     {loading && <div className="fc-slot-loading" role="status"><span className="fc-slot-spinner"/>图片加载中...</div>}
-    {image && !loading && <div className="fc-image-actions" style={{ width: 8 + 20 * (1 + Number(!libraryOnly) + Number(!libraryOnly && allowGenerate) + Number(!!onEdit) + Number(!!onRemove)) }} role="group" aria-label={`${label}图片操作`}>
-      {!libraryOnly && <button type="button" aria-label={`替换${label}图片`} title="替换" onClick={() => onAction?.('upload')}>
-        <AssetActionIcon action="upload"/>
-      </button>}
-      {!libraryOnly && allowGenerate && <button type="button" aria-label={`AI生成${label}`} title="AI 生成" onClick={() => onAction?.('generate')}>
-        <AssetActionIcon action="generate"/>
-      </button>}
-      {onEdit && <button type="button" aria-label={`重新编辑${label}文案`} title="重新编辑" onClick={onEdit}>
-        <Icon name="editPencil"/>
-      </button>}
-      <button type="button" aria-label={`打开${label}资产库`} title="资产库" onClick={() => onAction?.('library')}>
-        <AssetActionIcon action="library"/>
-      </button>
-      {onRemove && <button type="button" aria-label={`删除${label}图片`} title="删除" onClick={onRemove}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h18M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M5 6l1 14a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1l1-14M10 10v7m4-7v7"/></svg>
-      </button>}
-    </div>}
+    {image && !loading && <AssetActionBar label={`${label}图片操作`} actions={toolbarActions}/>}
   </div>
 }
 
@@ -88,11 +101,11 @@ export function BackgroundCard({ state = '默认', onStateChange, imageUrl, vehi
   const selectedProductIndustry = productIndustries.includes(productType) ? productType : ''
   const uploaded = state === '已上传' || state === '删除上传图片'
   return <CardSurface className={`fc-card fc-background ${collapsed ? 'fc-card--collapsed' : ''}`} data-component="background" data-state={state}>
-    <Header title="背景场景" guide={{ title: '背景场景', text: '上传与人物风格一致的清晰场景图片；如果需要展示商品，可在产品区域补充素材，并检查画面中的主体是否清楚。', cover: assets.room }} toggleLabel={`${collapsed ? '展开' : '收起'}背景场景`} onToggle={() => setCollapsed(!collapsed)}/>
+    <Header title="背景场景" toggleLabel={`${collapsed ? '展开' : '收起'}背景场景`} onToggle={() => setCollapsed(!collapsed)}/>
     {!collapsed && <div className={`fc-background-body ${state === 'hover' ? 'fc-background-body--hover' : ''}`}>
-      <AssetSlot label="背景" hover={state === 'hover'} image={uploaded ? imageUrl || assets.room : undefined} loading={loadingBackground} removable={state === '删除上传图片'} onAction={onAction} onRemove={() => { onRemoveBackground?.(); onStateChange?.('默认') }}/>
+      <AssetSlot label="背景" guide={{ title: '背景场景', text: '上传与人物风格一致、主体清晰的场景图片，并注意人物在画面中的站位与空间关系。', cover: assets.room }} hover={state === 'hover'} image={uploaded ? imageUrl || assets.room : undefined} loading={loadingBackground} removable={state === '删除上传图片'} onAction={onAction} onRemove={() => { onRemoveBackground?.(); onStateChange?.('默认') }}/>
       <div className={`fc-product-column ${vehicleImageUrl ? 'fc-product-column--filled' : ''}`}>
-        <AssetSlot label="产品" image={vehicleImageUrl} loading={loadingVehicle} onAction={onVehicleAction} onRemove={onRemoveVehicle}/>
+        <AssetSlot label="产品" guide={{ title: '产品素材', text: '上传主体清楚、背景干净的产品图片，确保产品比例和展示角度适合当前场景。', cover: '/figma-components/product-guide.jpg' }} image={vehicleImageUrl} loading={loadingVehicle} onAction={onVehicleAction} onRemove={onRemoveVehicle}/>
         {vehicleImageUrl && <div className="fc-product-type-control" onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setProductTypeOpen(false) }}>
           <button type="button" className={`fc-product-type-trigger ${selectedProductIndustry ? 'fc-product-type-trigger--selected' : ''} ${productTypeOpen ? 'fc-product-type-trigger--open' : ''}`} aria-label="产品行业" aria-haspopup="listbox" aria-expanded={productTypeOpen} onClick={() => setProductTypeOpen(!productTypeOpen)}>
             <span>{selectedProductIndustry || '产品行业'}</span><span className="fc-product-type-chevron" aria-hidden="true"/>
@@ -106,11 +119,10 @@ export function BackgroundCard({ state = '默认', onStateChange, imageUrl, vehi
   </CardSurface>
 }
 
-export function VoiceCard({ state = '默认', onStateChange, onUpload, onLibrary, audioUrl, legacyIcons = false, name = '清透年轻女声' }: {
-  state?: VoiceState; onStateChange?: (state: VoiceState) => void; onUpload?: () => void; onLibrary?: () => void; audioUrl?: string; legacyIcons?: boolean; name?: string
+export function VoiceCard({ state = '默认', onStateChange, onUpload, onLibrary, audioUrl, name = '清透年轻女声' }: {
+  state?: VoiceState; onStateChange?: (state: VoiceState) => void; onUpload?: () => void; onLibrary?: () => void; audioUrl?: string; name?: string
 }) {
   const [playing, setPlaying] = useState(false)
-  const [progress, setProgress] = useState(28)
   const [error, setError] = useState('')
   const audio = useRef<HTMLAudioElement>(null)
   const togglePlayback = async () => {
@@ -118,17 +130,25 @@ export function VoiceCard({ state = '默认', onStateChange, onUpload, onLibrary
     try { if (playing) audio.current.pause(); else await audio.current.play(); setPlaying(!playing); setError('') } catch { setError('此音频无法播放，请换一个文件') }
   }
   return <div className="fc-voice" data-component="voice" data-state={state}>
-    <span className="fc-voice-heading"><span className="fc-material-label fc-voice-label">音色</span><TooltipHelp text="选择与人物形象和脚本语气相符的音色。上传的音频建议人声清晰、背景噪声少，上传后可试听效果。" label="音色创作指南" guide={{ title: '数字人音色', text: '选择与人物形象和脚本语气相符的音色。上传的音频建议人声清晰、背景噪声少，上传后可试听效果。', cover: '/figma-components/character-guide-cover.jpg' }}/></span>
-    {state === '默认' ? <div className="fc-voice-options">
-      <span className="fc-voice-upload-action"><button onClick={onUpload} aria-label="上传音色"><Icon name={legacyIcons ? "voiceUpload" : "voiceUploadNew"}/><span className="fc-voice-action-text">上传音色</span></button><TooltipHelp text="支持 MP3、WAV、M4A 格式的音频文件" label="音色上传格式限制"/></span><button onClick={onLibrary} aria-label="打开音色库" title="音色库"><Icon name={legacyIcons ? "wave" : "waveNew"}/><span className="fc-voice-action-text">音色库</span></button>
+    <span className="fc-material-label fc-voice-label">音色</span>
+    <TooltipHelp text="选择与人物形象和脚本语气相符的音色。上传的音频建议人声清晰、背景噪声少，上传后可试听效果。" label="音色创作指南" guide={{ title: '数字人音色', text: '选择与人物形象和脚本语气相符的音色。上传的音频建议人声清晰、背景噪声少，上传后可试听效果。', cover: '/figma-components/character-guide-cover.jpg' }}/>
+    {state === '默认' ? <div className="fc-voice-empty-state">
+      <button className="fc-voice-add" aria-label="添加音色" onClick={onUpload}><Icon name="add"/></button>
+      <div className="fc-voice-options">
+        <UploadActionButton tooltip="支持 MP3、WAV、M4A 格式的音频文件" onClick={onUpload}/><button onClick={onLibrary} aria-label="打开音色库" title="音色库"><AssetActionIcon action="library"/><span className="fc-voice-action-text">音色库</span></button>
+      </div>
     </div> : <div className={`fc-voice-content ${state === '上传中' ? 'fc-voice-content--loading' : ''}`}>
-      <button className="fc-voice-close" aria-label="移除音色" onClick={() => { audio.current?.pause(); setPlaying(false); setError(''); onStateChange?.('默认') }}><Icon name="delete"/></button>
       {state === '上传中' ? <><span className="fc-voice-avatar"><Icon name="audioNew"/></span><span className="fc-voice-loading" role="status">音色上传中...</span></> : <>
         <button className="fc-voice-avatar" aria-label={playing ? '暂停音色' : '播放音色'} onClick={togglePlayback}>{playing ? <span className="fc-pause">Ⅱ</span> : <Icon name="play"/>}</button>
-        <div className="fc-voice-track"><span title={name}>{name}</span><div className="fc-progress"><div className="fc-progress-fill" style={{ width: `${progress}%` }}/><img className="fc-progress-thumb" src={assets.thumb} alt="" style={{ left: `${progress}%` }}/><input aria-label="音色播放进度" type="range" min="0" max="100" value={progress} onChange={e => { const p = +e.target.value; setProgress(p); if (audio.current && Number.isFinite(audio.current.duration)) audio.current.currentTime = p / 100 * audio.current.duration }}/></div></div>
+        <div className="fc-voice-track"><span title={name}>{name}</span></div>
+        <AssetActionBar className="fc-voice-actions" label="音色操作" actions={[
+          { action: 'upload', label: '重新上传音色', tooltip: '重新上传', onClick: onUpload },
+          { action: 'library', label: '打开音色库', tooltip: '音色库', onClick: onLibrary },
+          { action: 'delete', label: '删除音色', tooltip: '删除', onClick: () => { audio.current?.pause(); setPlaying(false); setError(''); onStateChange?.('默认') } },
+        ]}/>
       </>}
     </div>}
-    {audioUrl && <audio ref={audio} src={audioUrl} onTimeUpdate={e => { if (Number.isFinite(e.currentTarget.duration)) setProgress(e.currentTarget.currentTime / e.currentTarget.duration * 100) }} onEnded={() => setPlaying(false)}/>}
+    {audioUrl && <audio ref={audio} src={audioUrl} onEnded={() => setPlaying(false)}/>}
     {error && <span className="fc-audio-message" role="status">{error}</span>}
   </div>
 }
@@ -137,8 +157,8 @@ export function CharacterVoiceCard({ state = '默认', voiceState = '默认', on
   state?: CharacterState; voiceState?: VoiceState; onVoiceStateChange?: (state: VoiceState) => void; onAction?: (action: AssetAction) => void; imageUrl?: string; audioUrl?: string; loadingImage?: boolean; onRemoveImage?: () => void; onVoiceUpload?: () => void; onVoiceLibrary?: () => void
 }) {
   return <CardSurface className="fc-card fc-character" data-component="character" data-state={state}>
-    <Header title="人物与音色" guide={{ title: '数字人人物形象', text: '上传清晰的单人正面照片，保持面部无遮挡、光线均匀；音色建议选择与人物形象和视频风格相符的清晰音频。', cover: '/figma-components/character-guide-cover.jpg' }}/>
-    <div className="fc-character-body"><AssetSlot label="人物" character hover={state === '人物hover'} image={imageUrl} loading={loadingImage} onAction={onAction} onRemove={onRemoveImage}/><VoiceCard legacyIcons={state === '人物hover'} state={voiceState} onStateChange={onVoiceStateChange} onUpload={onVoiceUpload} onLibrary={onVoiceLibrary} audioUrl={audioUrl}/></div>
+    <Header title="人物与音色"/>
+    <div className="fc-character-body"><AssetSlot label="人物" guide={{ title: '数字人人物形象', text: '上传清晰的单人正面照片，保持面部无遮挡、光线均匀，并为人物四周保留适当空间。', cover: '/figma-components/character-guide-cover.jpg' }} character hover={state === '人物hover'} image={imageUrl} loading={loadingImage} onAction={onAction} onRemove={onRemoveImage}/><VoiceCard state={voiceState} onStateChange={onVoiceStateChange} onUpload={onVoiceUpload} onLibrary={onVoiceLibrary} audioUrl={audioUrl}/></div>
   </CardSurface>
 }
 
