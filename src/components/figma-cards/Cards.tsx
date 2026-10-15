@@ -271,7 +271,6 @@ export function StickerCard({ state = '默认', onStateChange, onMore, onTemplat
     {!collapsed && <div className="fc-sticker-body">
       <div className="fc-sticker-current"><AssetSlot label="当前贴纸" primaryAction="library" allowGenerate={false} libraryOnly={!onUpload} loading={loading} image={chosenSticker ?? undefined} onAction={action => action === 'upload' && onUpload ? onUpload() : onMore?.()} onEdit={chosenSticker && selectedTemplateIndex !== null ? onEditCurrent : undefined} onRemove={() => chooseSticker(null)}/></div>
       <div className={`fc-sticker-list ${end ? 'fc-sticker-list--end' : ''}`}>
-        <span className="fc-material-label fc-sticker-recommended-label">推荐模板</span>
         <div className="fc-sticker-clips" ref={clips} tabIndex={0} aria-label="贴纸列表" onScroll={updateFromScroll} onDragStart={event => event.preventDefault()}
           onWheel={event => { const element = clips.current; if (!element || Math.abs(event.deltaX) >= Math.abs(event.deltaY)) return; const max = element.scrollWidth - element.clientWidth; if ((event.deltaY > 0 && element.scrollLeft < max) || (event.deltaY < 0 && element.scrollLeft > 0)) { event.preventDefault(); element.scrollLeft += event.deltaY } }}
           onKeyDown={event => { if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') { event.preventDefault(); scrollByCard(event.key === 'ArrowRight' ? 1 : -1) } else if (event.key === 'Home' || event.key === 'End') { event.preventDefault(); clips.current?.scrollTo({ left: event.key === 'Home' ? 0 : clips.current.scrollWidth, behavior: 'smooth' }) } }}
