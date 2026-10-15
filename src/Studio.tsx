@@ -50,6 +50,8 @@ function AssetLibraryContent({ kind, onClose, onConfirm, initialVoiceSettings, i
   const [voiceSettings, setVoiceSettings] = useState(initialVoiceSettings)
   const [playingVoice, setPlayingVoice] = useState<number | null>(null)
   const [voiceProgress, setVoiceProgress] = useState(() => demoVoices.map(() => 0))
+  const [playingAdjustedVoice, setPlayingAdjustedVoice] = useState(false)
+  const [adjustedVoiceProgress, setAdjustedVoiceProgress] = useState(0)
   const [stickerFields, setStickerFields] = useState(initialStickerFields)
   const [fieldError, setFieldError] = useState(false)
   const hasSettings = kind === 'voice' || kind === 'attachment' || kind === 'sticker'
@@ -58,7 +60,12 @@ function AssetLibraryContent({ kind, onClose, onConfirm, initialVoiceSettings, i
   const stickerValid = !isSticker || (!!stickerFields.title.trim() && (!stickerHasDetail || !!stickerFields.detail.trim()))
   const title = kind === 'character' ? '人物资产库' : kind === 'voice' ? '音色资产库' : kind === 'background' ? '背景资产库' : kind === 'vehicle' ? '产品资产库' : '贴纸资产库'
   const libraryHelp = kind === 'voice' ? '选择音色后，可调整语速与音量，并试听当前参数下的效果。' : isSticker ? '选择一个贴纸模板，再填写模板对应的主文案与补充文案。' : ''
-  const choose = (index: number) => { setSelected(index); setFieldError(false); if (isSticker && index !== selected) setStickerFields({ title: '', detail: '' }) }
+  const choose = (index: number) => {
+    if (kind === 'voice' && index !== selected) { setPlayingAdjustedVoice(false); setAdjustedVoiceProgress(0) }
+    setSelected(index)
+    setFieldError(false)
+    if (isSticker && index !== selected) setStickerFields({ title: '', detail: '' })
+  }
   useEffect(() => {
     if (playingVoice === null) return
     const timer = window.setInterval(() => setVoiceProgress(current => current.map((progress, index) => {
@@ -68,6 +75,14 @@ function AssetLibraryContent({ kind, onClose, onConfirm, initialVoiceSettings, i
     })), 120)
     return () => window.clearInterval(timer)
   }, [playingVoice, voiceSettings.speed])
+  useEffect(() => {
+    if (!playingAdjustedVoice) return
+    const timer = window.setInterval(() => setAdjustedVoiceProgress(progress => {
+      if (progress >= 100) { setPlayingAdjustedVoice(false); return 0 }
+      return Math.min(100, progress + .8 * voiceSettings.speed)
+    }), 120)
+    return () => window.clearInterval(timer)
+  }, [playingAdjustedVoice, voiceSettings.speed])
   return <div className={`studio-library ${hasSettings ? 'studio-library--configurable' : ''}`}>
     <header className="studio-library-header"><div className="studio-library-title"><h2>{title}</h2>{libraryHelp && <TooltipHelp text={libraryHelp} label={`${title}使用说明`} withinLayer/>}</div><button className="studio-library-close" aria-label="关闭资产库" autoFocus onClick={onClose}><img src={asset('asset-library-ac691.svg')} alt=""/></button></header>
     <div className="studio-library-body"><div className="studio-library-content">
@@ -75,16 +90,16 @@ function AssetLibraryContent({ kind, onClose, onConfirm, initialVoiceSettings, i
       <div className="studio-library-scroll"><div className="studio-library-grid">
         {(kind === 'voice' ? demoVoices : libraryFiles).map((file, index) => (hasSettings || category === '全部' || libraryCategoryForItem(index) === category) && (kind === 'voice' ? <div className={`studio-library-item studio-library-voice-card ${selected === index ? 'studio-library-item--selected' : ''}`} key={file}>
           <button className="studio-library-voice-select" type="button" aria-label={`选择音色 ${file}`} aria-pressed={selected === index} onClick={() => choose(index)}/>
-          <button className="studio-library-voice-play" type="button" aria-label={playingVoice === index ? `暂停${file}` : `播放${file}`} onClick={event => { event.stopPropagation(); setPlayingVoice(current => current === index ? null : index) }}>{playingVoice === index ? <span aria-hidden="true">Ⅱ</span> : <img src={asset('4ab24.svg')} alt=""/>}</button>
-          <span className="studio-library-voice-info"><span className="studio-library-voice-name">{file}</span><span className="studio-library-voice-track"><span style={{ width: `${voiceProgress[index]}%` }}/><img src={asset('41848.svg')} alt="" style={{ left: `${voiceProgress[index]}%` }}/><input aria-label={`${file}试听进度`} type="range" min="0" max="100" value={voiceProgress[index]} onClick={event => event.stopPropagation()} onChange={event => { const progress = Number(event.target.value); setVoiceProgress(current => current.map((value, itemIndex) => itemIndex === index ? progress : value)) }}/></span></span>
+          <button className="studio-library-voice-play" type="button" aria-label={playingVoice === index ? `暂停${file}` : `播放${file}`} onClick={event => { event.stopPropagation(); setPlayingAdjustedVoice(false); setPlayingVoice(current => current === index ? null : index) }}>{playingVoice === index ? <span aria-hidden="true">Ⅱ</span> : <img src={asset('4ab24.svg')} alt=""/>}</button>
+          <span className="studio-library-voice-info"><span className="studio-library-voice-name">{file}</span></span>
         </div> : <button className={`studio-library-item ${selected === index ? 'studio-library-item--selected' : ''}`} key={file} aria-label={`选择素材 ${index + 1}`} aria-pressed={selected === index} onClick={() => choose(index)}><span className="studio-library-thumb"><img className={index === 1 ? 'studio-library-thumb--wide' : ''} src={libraryImage(file)} alt=""/></span><span className="studio-library-item-meta"><strong>{isSticker ? `模板 ${String(index + 1).padStart(2, '0')}` : '03'}</strong><span>{isSticker ? '可编辑' : '--:--'}</span></span></button>))}
       </div></div>
     </div>{hasSettings && <aside className={`studio-library-settings ${kind === 'voice' ? 'studio-library-settings--voice' : ''}`} aria-label={kind === 'voice' ? '音色参数' : '贴纸字段'}>
       <h3>{kind === 'voice' ? '音色设置' : '贴纸设置'}</h3>
       {kind === 'voice' ? <>
         {selected === null ? <div className="studio-library-item studio-library-voice-card studio-library-picked studio-library-voice-empty" role="status">请选择音色</div> : <div className="studio-library-item studio-library-voice-card studio-library-picked" aria-label={`当前音色 ${demoVoices[selected]}`}>
-          <button className="studio-library-voice-play" type="button" aria-label={playingVoice === selected ? `暂停调整后的${demoVoices[selected]}` : `播放调整后的${demoVoices[selected]}`} onClick={() => setPlayingVoice(current => current === selected ? null : selected)}>{playingVoice === selected ? <span aria-hidden="true">Ⅱ</span> : <img src={asset('4ab24.svg')} alt=""/>}</button>
-          <span className="studio-library-voice-info"><span className="studio-library-voice-name">{demoVoices[selected]}</span><span className="studio-library-voice-track"><span style={{ width: `${voiceProgress[selected]}%` }}/><img src={asset('41848.svg')} alt="" style={{ left: `${voiceProgress[selected]}%` }}/><input aria-label={`${demoVoices[selected]}调整后试听进度`} type="range" min="0" max="100" value={voiceProgress[selected]} onChange={event => { const progress = Number(event.target.value); setVoiceProgress(current => current.map((value, itemIndex) => itemIndex === selected ? progress : value)) }}/></span></span>
+          <button className="studio-library-voice-play" type="button" aria-label={playingAdjustedVoice ? `暂停调整后的${demoVoices[selected]}` : `播放调整后的${demoVoices[selected]}`} onClick={() => { setPlayingVoice(null); setPlayingAdjustedVoice(current => !current) }}>{playingAdjustedVoice ? <span aria-hidden="true">Ⅱ</span> : <img src={asset('4ab24.svg')} alt=""/>}</button>
+          <span className="studio-library-voice-info"><span className="studio-library-voice-name">{demoVoices[selected]}</span><span className="studio-library-voice-track"><span style={{ width: `${adjustedVoiceProgress}%` }}/><img src={asset('41848.svg')} alt="" style={{ left: `${adjustedVoiceProgress}%` }}/><input aria-label={`${demoVoices[selected]}调整后试听进度`} type="range" min="0" max="100" value={adjustedVoiceProgress} onChange={event => setAdjustedVoiceProgress(Number(event.target.value))}/></span></span>
         </div>}
         <p className="studio-library-settings-note">{selected === null ? '选择音色后，可播放当前参数下的试听效果。' : '播放当前语速与音量参数下的试听效果。'}</p>
         <label className="studio-library-range"><span>语速 <span className="studio-library-range-value"><input aria-label="语速数值" type="number" min="0.5" max="1.5" step="0.01" value={voiceSettings.speed} onChange={event => { const value = Number(event.target.value); if (Number.isFinite(value)) setVoiceSettings(current => ({ ...current, speed: Math.min(1.5, Math.max(.5, value)) })) }}/><b>×</b></span></span><input className="studio-library-range-slider" type="range" min="0.5" max="1.5" step="0.01" value={voiceSettings.speed} style={{ '--range-progress': `${(voiceSettings.speed - .5) * 100}%` } as CSSProperties} onChange={event => setVoiceSettings(current => ({ ...current, speed: Number(event.target.value) }))}/><small className="studio-library-range-labels studio-library-range-labels--speed"><span>慢速</span><span>正常</span><span>快速</span></small></label>
@@ -335,7 +350,7 @@ export function Studio() {
         await Promise.all([image.decode(), new Promise(resolve => setTimeout(resolve, 450))])
         if (kind === 'sticker' && stickerRequest !== stickerOperation.current) { URL.revokeObjectURL(url); return }
         objectUrls.current.push(url)
-        if (kind === 'sticker') setStickerImage(url)
+        if (kind === 'sticker') { setStickerImage(url); setStickerTemplateIndex(null); setStickerFields({ title: '', detail: '' }) }
         else setMedia(current => ({ ...current, [kind]: url }))
         if (kind === 'background') setBackgroundState('已上传')
         setSaved(false)
@@ -437,11 +452,9 @@ export function Studio() {
         <div className="studio-title">{editingTitle ? <input aria-label="项目名称" autoFocus maxLength={40} value={draft.title} onChange={e => changed({ ...draft, title: e.target.value })} onBlur={() => setEditingTitle(false)} onKeyDown={e => e.key === 'Enter' && setEditingTitle(false)}/> : <span>{draft.title}</span>}<button aria-label="重命名项目" onClick={() => setEditingTitle(true)}><Glyph file="0044f.svg"/></button></div><span className="studio-save-state">{saved ? '已保存' : '未保存'}</span>
       </div></div>
       <div className="studio-toolbar">
-        <button className="studio-tool" aria-label="历史记录" onClick={() => setDialog('history')}><Glyph file="e0f3c.svg"/></button>
         <button className="studio-tool" aria-label="保存项目" onClick={save}><Glyph file="b765b.svg"/></button>
         <button className="studio-tool" aria-label="撤销" disabled={!past.length} onClick={undo}><Glyph file="45bce.svg"/></button>
         <button className="studio-tool" aria-label="重做" disabled={!future.length} onClick={redo}><Glyph file="4bc7a.svg" className="studio-flip"/></button>
-        <button className="studio-tool" aria-label="检查生产配置" onClick={() => setDialog('produce')}><Glyph file="b088e.svg"/></button>
         <button className="studio-publish" onClick={() => setDialog('publish')}><Glyph file="28c81.svg"/>发布</button>
         <button className="studio-produce" onClick={() => setDialog('produce')}><Glyph file="5d7b8.svg"/>执行生产</button>
       </div>

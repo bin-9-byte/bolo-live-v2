@@ -1,8 +1,8 @@
 const base = `${import.meta.env.BASE_URL}figma-components/`
 export const assets = {
   files: `${base}4c8f8.svg`, upload: `${base}f6019.svg`, room: `${base}13e93.png`,
-  panel: `${base}977de.svg`, edit: `${base}81191.svg`, add: `${base}db7b7.svg`,
-  minus: `${base}bd920.svg`, magic: `${base}f7d62.svg`, voiceUpload: `${base}f3690.svg`,
+  panel: `${base}977de.svg`, edit: `${base}81191.svg`, editPencil: `${base}edit-pencil.svg`, add: `${base}db7b7.svg`,
+  minus: `${base}bd920.svg`, magic: `${base}ai-generate-sparkle.svg`, voiceUpload: `${base}f3690.svg`,
   wave: `${base}432a9.svg`, uploadWave: `${base}f9a92.svg`, close: `${base}1941c.svg`, delete: `${base}delete.svg`,
   play: `${base}4ab24.svg`, thumb: `${base}41848.svg`, avatarBase: `${base}36b68.png`,
   avatar: `${base}165da.png`, info: `${base}2bd1b.svg`, loading: `${base}cd81b.svg`,

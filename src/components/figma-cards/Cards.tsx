@@ -3,7 +3,7 @@ import type { ChangeEvent, ReactNode } from 'react'
 import { motion, useReducedMotion } from 'motion/react'
 import type { HTMLMotionProps } from 'motion/react'
 import { assets } from './assets'
-import { TooltipHelp } from './Tooltip'
+import { TooltipButton, TooltipHelp } from './Tooltip'
 import type { TooltipGuide } from './Tooltip'
 import './cards.less'
 
@@ -39,32 +39,35 @@ function Header({ title, badge, guide, expanded = false, actions = false, action
     {!guide && <button className="fc-collapse" aria-label={toggleLabel ?? `切换${title}`} onClick={onToggle}><Icon name="panel"/></button>}
     <div className="fc-heading">{guide && onToggle ? <button className="fc-heading-toggle" aria-label={toggleLabel ?? `切换${title}`} onClick={onToggle}><h2>{title}</h2></button> : <h2>{title}</h2>}{guide && <TooltipHelp text={guide.text} label={`${title}创作指南`} guide={guide}/>} {badge && <span className="fc-confirmed-tag">{badge}</span>}</div>
     {actions && <div className="fc-actions">
-      {onHistory && <button className="fc-round" aria-label="脚本历史" title="脚本历史" onClick={onHistory}><Icon name="history"/></button>}
-      <button className="fc-round" aria-label={`上传${title}`} disabled={actionsDisabled} onClick={() => onAction?.('upload')}><Icon name="upload"/></button>
-      <button className="fc-round" aria-label={`AI生成${title}`} disabled={actionsDisabled} onClick={() => onAction?.('generate')}><Icon name="magic"/></button>
-      <button className="fc-round fc-size-toggle" aria-label={`${expanded ? '收起' : '展开'}${title}`} onClick={onToggle}><Icon name={expanded ? 'collapse' : 'expand'}/></button>
+      {onHistory && <TooltipButton className="fc-round" label="脚本历史" text="查看脚本历史" onClick={onHistory}><Icon name="history"/></TooltipButton>}
+      <TooltipButton className="fc-round" label={`上传${title}`} text="上传脚本文件" disabled={actionsDisabled} onClick={() => onAction?.('upload')}><Icon name="upload"/></TooltipButton>
+      <TooltipButton className="fc-round" label={`AI生成${title}`} text="AI 生成脚本" disabled={actionsDisabled} onClick={() => onAction?.('generate')}><Icon name="magic"/></TooltipButton>
+      <TooltipButton className="fc-round fc-size-toggle" label={`${expanded ? '收起' : '展开'}${title}`} text={`${expanded ? '收起' : '展开'}脚本编辑区`} onClick={onToggle}><Icon name={expanded ? 'collapse' : 'expand'}/></TooltipButton>
     </div>}
   </header>
 }
 
-function AssetSlot({ label, hover = false, removable = false, loading = false, image, onAction, onRemove, character = false, libraryOnly = false, allowGenerate = true, primaryAction = 'upload' }: {
-  label: string; hover?: boolean; removable?: boolean; loading?: boolean; image?: string; onAction?: (action: AssetAction) => void; onRemove?: () => void; character?: boolean; libraryOnly?: boolean; allowGenerate?: boolean; primaryAction?: AssetAction
+function AssetSlot({ label, hover = false, removable = false, loading = false, image, onAction, onEdit, onRemove, character = false, libraryOnly = false, allowGenerate = true, primaryAction = 'upload' }: {
+  label: string; hover?: boolean; removable?: boolean; loading?: boolean; image?: string; onAction?: (action: AssetAction) => void; onEdit?: () => void; onRemove?: () => void; character?: boolean; libraryOnly?: boolean; allowGenerate?: boolean; primaryAction?: AssetAction
 }) {
   return <div className={`fc-slot ${hover ? 'fc-slot--hover' : ''} ${image ? 'fc-slot--image' : ''} ${loading ? 'fc-slot--loading' : ''} ${removable ? 'fc-slot--remove-visible' : ''} ${character ? 'fc-slot--character' : ''}`} aria-busy={loading}>
     {image ? <img className="fc-uploaded-image" src={image} alt={`${label}素材`}/> : !loading && <button className="fc-add" aria-label={`添加${label}`} onClick={() => onAction?.(primaryAction)}><Icon name="add"/></button>}
     <span className="fc-material-label">{label}</span>
     {!image && !loading && <div className="fc-slot-menu">
-      {!libraryOnly && <span className="fc-slot-upload-wrap"><button onClick={() => onAction?.('upload')}><AssetActionIcon action="upload"/>本地上传</button><TooltipHelp text="支持 PNG、JPG、WebP、GIF 等浏览器可读取的图片格式" label={`${label}图片上传格式限制`}/></span>}
+      {!libraryOnly && <span className="fc-slot-upload-wrap"><button type="button" aria-label={`上传${label}图片`} onClick={() => onAction?.('upload')}><AssetActionIcon action="upload"/>上传</button><TooltipHelp text="支持 PNG、JPG、WebP、GIF 等浏览器可读取的图片格式" label={`${label}图片上传格式限制`}/></span>}
       {!libraryOnly && allowGenerate && <button onClick={() => onAction?.('generate')}><AssetActionIcon action="generate"/>AI生成</button>}
       <button onClick={() => onAction?.('library')}><AssetActionIcon action="library"/>资产库</button>
     </div>}
     {loading && <div className="fc-slot-loading" role="status"><span className="fc-slot-spinner"/>图片加载中...</div>}
-    {image && !loading && <div className="fc-image-actions" style={{ width: 8 + 30 * (1 + Number(!libraryOnly) + Number(!libraryOnly && allowGenerate) + Number(!!onRemove)) }} role="group" aria-label={`${label}图片操作`}>
+    {image && !loading && <div className="fc-image-actions" style={{ width: 8 + 20 * (1 + Number(!libraryOnly) + Number(!libraryOnly && allowGenerate) + Number(!!onEdit) + Number(!!onRemove)) }} role="group" aria-label={`${label}图片操作`}>
       {!libraryOnly && <button type="button" aria-label={`替换${label}图片`} title="替换" onClick={() => onAction?.('upload')}>
         <AssetActionIcon action="upload"/>
       </button>}
       {!libraryOnly && allowGenerate && <button type="button" aria-label={`AI生成${label}`} title="AI 生成" onClick={() => onAction?.('generate')}>
         <AssetActionIcon action="generate"/>
+      </button>}
+      {onEdit && <button type="button" aria-label={`重新编辑${label}文案`} title="重新编辑" onClick={onEdit}>
+        <Icon name="editPencil"/>
       </button>}
       <button type="button" aria-label={`打开${label}资产库`} title="资产库" onClick={() => onAction?.('library')}>
         <AssetActionIcon action="library"/>
@@ -246,7 +249,7 @@ export function StickerCard({ state = '默认', onStateChange, onMore, onTemplat
   return <CardSurface ref={surface} layout={false} className={`fc-card fc-sticker ${collapsed ? 'fc-card--collapsed' : ''}`} data-component="sticker" data-state={current}>
     <Header title="贴纸" guide={{ title: '贴纸素材', text: '贴纸适合突出画面中的重点信息。上传或选择贴纸后，合成预览并检查它的位置、大小和对人物的遮挡。', cover: assets.stickerPhone }} badge={chosenSticker ? previewReady ? '预览中' : '合成后预览' : undefined} onToggle={() => setCollapsed(!collapsed)}/>
     {!collapsed && <div className="fc-sticker-body">
-      <div className="fc-sticker-current"><AssetSlot label="当前贴纸" primaryAction="library" allowGenerate={false} libraryOnly={!onUpload} loading={loading} image={chosenSticker ?? undefined} onAction={action => action === 'upload' && onUpload ? onUpload() : chosenSticker ? onEditCurrent?.() : onMore?.()} onRemove={() => chooseSticker(null)}/></div>
+      <div className="fc-sticker-current"><AssetSlot label="当前贴纸" primaryAction="library" allowGenerate={false} libraryOnly={!onUpload} loading={loading} image={chosenSticker ?? undefined} onAction={action => action === 'upload' && onUpload ? onUpload() : onMore?.()} onEdit={chosenSticker && selectedTemplateIndex !== null ? onEditCurrent : undefined} onRemove={() => chooseSticker(null)}/></div>
       <div className={`fc-sticker-list ${end ? 'fc-sticker-list--end' : ''}`}>
         <span className="fc-material-label fc-sticker-recommended-label">推荐模板</span>
         <div className="fc-sticker-clips" ref={clips} tabIndex={0} aria-label="贴纸列表" onScroll={updateFromScroll} onDragStart={event => event.preventDefault()}

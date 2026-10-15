@@ -37,6 +37,7 @@
   &--minus { width: 10px; height: 10px; }
   &--close, &--chevron { width: 8px; height: 8px; }
   &--uploadWave { width: 19.2px; height: 19.2px; }
+  &--magic img { width: 100%; height: 100%; }
   &--files img, &--upload img { transform: scale(.8); }
   &--arrowRight { width: 12px; height: 12px; img { transform: scale(.5); } }
   &--audioNew { transform: translateX(-.5px); }
@@ -96,21 +97,23 @@
 .fc-product-type-check { width: 14px; flex: none; color: #777; text-align: center; }
 @keyframes fc-product-menu-enter { from { opacity: 0; transform: translateY(4px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @media (prefers-reduced-motion: reduce) { .fc-product-type-menu { animation: none; } .fc-card .fc-product-type-trigger, .fc-product-type-chevron { transition: none; } }
-.fc-slot-menu { position: absolute; top: 50%; left: 50%; display: flex; transform: translate(-50%, -48%); flex-direction: column; gap: 8px; padding: 0 8px; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 170ms ease, transform 180ms ease, visibility 170ms;
-  button { display: flex; align-items: center; justify-content: center; gap: 5px; height: 36px; padding: 7px 17px; min-width: 56px; border: 1px solid white; border-radius: @radius-control; background: @card; font-weight: 500; line-height: 1.4; white-space: nowrap; }
+.fc-slot-menu { position: absolute; top: 50%; left: 50%; display: flex; width: min(96px, calc(100% - 16px)); transform: translate(-50%, -48%); flex-direction: column; align-items: stretch; gap: 8px; padding: 0; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 170ms ease, transform 180ms ease, visibility 170ms;
+  button { display: flex; align-items: center; justify-content: center; gap: 5px; width: 100%; height: 36px; padding: 7px 10px; min-width: 0; border: 1px solid white; border-radius: @radius-control; background: @card; font-weight: 500; line-height: 1.4; white-space: nowrap; }
 }
-.fc-slot-upload-wrap { display: flex; align-items: center; justify-content: center; gap: 5px; height: 36px; padding: 0 12px; border: 1px solid white; border-radius: @radius-control; background: @card; white-space: nowrap; }
+.fc-slot-upload-wrap { display: flex; align-items: center; justify-content: center; gap: 5px; width: 100%; height: 36px; padding: 0 8px; border: 1px solid white; border-radius: @radius-control; background: @card; box-sizing: border-box; white-space: nowrap; transition: background-color 180ms ease; }
 .fc-slot-menu .fc-slot-upload-wrap > button:first-child { flex: none; display: flex; align-items: center; gap: 5px; width: auto; min-width: 0; height: auto; padding: 0; border: 0; border-radius: 0; background: transparent; }
 .fc-slot-menu .fc-slot-upload-wrap .fc-tooltip-help { flex: none; width: 14px; height: 14px; min-width: 0; padding: 0; border: 0; background: transparent; box-shadow: none; }
 .fc-slot-menu .fc-slot-upload-wrap .fc-tooltip-help:hover, .fc-slot-menu .fc-slot-upload-wrap .fc-tooltip-help:focus-visible { background: transparent; box-shadow: none; }
+.fc-slot-upload-wrap:hover, .fc-slot-upload-wrap:focus-within { background: rgba(255,255,255,.67); }
+.fc-slot-menu .fc-slot-upload-wrap > button:first-child:hover, .fc-slot-menu .fc-slot-upload-wrap > button:first-child:focus-visible { background: transparent; }
 .fc-slot .fc-asset-action-icon {
   width: 16px; height: 16px;
   img { width: 100%; height: 100%; object-fit: contain; transform: none; }
 }
 .fc-card .fc-image-actions {
   position: absolute; z-index: 2; left: 50%; bottom: 8px;
-  display: flex; align-items: center; justify-content: space-between;
-  max-width: calc(100% - 8px); height: 30px; padding: 8px 12px; gap: 0;
+  display: grid; grid-auto-flow: column; grid-auto-columns: 14px; align-items: center; justify-content: center;
+  max-width: calc(100% - 8px); height: 30px; padding: 8px 7px; column-gap: 6px; box-sizing: border-box;
   background: rgba(0,0,0,.8); backdrop-filter: blur(2px); border-radius: 16px;
   opacity: 0; visibility: hidden; pointer-events: none; transform: translate(-50%, 3px);
   transition: opacity 160ms ease, transform 160ms ease, visibility 160ms;
@@ -120,6 +123,7 @@
   svg { width: 14px; height: 14px; flex: none; }
   .fc-icon { width: 14px; height: 14px; }
   .fc-icon img { width: 14px; height: 14px; transform: none; filter: brightness(0) invert(1); }
+  .fc-icon--editPencil, .fc-icon--editPencil img { width: 14px; height: 14px; }
 }
 .fc-slot--image:hover, .fc-slot--image:focus-within, .fc-slot--image.fc-slot--hover, .fc-slot--remove-visible {
   .fc-image-actions { opacity: 1; visibility: visible; pointer-events: auto; transform: translate(-50%, 0); }
@@ -142,10 +146,11 @@
 .fc-voice-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px; height: 58px;
   button { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 12px; min-width: 0; flex: 1; background: @card; border-radius: @radius-content @radius-xs @radius-xs @radius-content; color: @secondary; font-weight: 500; line-height: 18px; letter-spacing: .0804px; }
   button + button { border-radius: @radius-xs @radius-content @radius-content @radius-xs; }
-  .fc-voice-upload-action { position: relative; display: flex; align-items: center; justify-content: center; min-width: 0; border-radius: @radius-content @radius-xs @radius-xs @radius-content; background: @card; }
-  .fc-voice-upload-action > button:first-child { position: absolute; inset: 0; display: flex; width: 100%; height: 100%; padding: 0 28px 0 10px; gap: 8px; background: transparent; border-radius: inherit; }
+  .fc-voice-upload-action { position: relative; display: grid; grid-template-columns: 14px minmax(0, 1fr) 14px; align-items: center; column-gap: 4px; min-width: 0; padding: 0 8px; border-radius: @radius-content @radius-xs @radius-xs @radius-content; background: @card; box-sizing: border-box; }
+  .fc-voice-upload-action::before { content: ''; width: 14px; height: 14px; }
+  .fc-voice-upload-action > button:first-child { position: static; display: flex; width: 100%; height: 100%; padding: 0; gap: 8px; background: transparent; border-radius: 0; }
   .fc-voice-upload-action + button { border-radius: @radius-xs @radius-content @radius-content @radius-xs; }
-  .fc-voice-upload-action .fc-tooltip-help { position: absolute; z-index: 1; top: 50%; right: 8px; width: 14px; height: 14px; padding: 0; background: transparent; border-radius: 50%; transform: translateY(-50%); }
+  .fc-voice-upload-action .fc-tooltip-help { position: static; z-index: 1; width: 14px; height: 14px; padding: 0; background: transparent; border-radius: 50%; transform: none; }
   .fc-voice-upload-action .fc-tooltip-help-icon { width: 12px; height: 12px; }
   .fc-voice-upload-action:hover, .fc-voice-upload-action:focus-within { background: rgba(255,255,255,.95); }
   .fc-voice-upload-action > button:first-child:hover, .fc-voice-upload-action > button:first-child:focus-visible { background: transparent; box-shadow: none; }
@@ -243,7 +248,7 @@
   > .fc-slot { width: 100%; height: 100%; }
   .fc-slot-menu { gap: 6px; padding: 0 4px; button { padding: 5px 7px; height: 30px; font-size: 10px; } }
   .fc-slot-upload-wrap { gap: 3px; height: 30px; padding: 0 5px; }
-  .fc-slot-menu .fc-slot-upload-wrap > button:first-child { height: auto; padding: 0; gap: 3px; font-size: 9px; }
+  .fc-slot-menu .fc-slot-upload-wrap > button:first-child { height: auto; padding: 0; gap: 3px; font-size: 10px; }
   .fc-slot-upload-wrap .fc-asset-action-icon { width: 14px; height: 14px; }
   .fc-slot-menu .fc-slot-upload-wrap .fc-tooltip-help, .fc-slot-menu .fc-slot-upload-wrap .fc-tooltip-help-icon { width: 12px; height: 12px; padding: 0; }
 }
